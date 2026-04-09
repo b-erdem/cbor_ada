@@ -745,6 +745,28 @@ procedure Test_Cbor is
       end;
    end Test_Empty_Strings;
 
+   procedure Test_Decode_All_Strict is
+      Exact : constant Stream_Element_Array :=
+        Enc.Encode_Unsigned (42);
+      R_Exact : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All_Strict (Exact);
+      Trailing : constant Stream_Element_Array :=
+        Enc.Encode_Unsigned (42) & [16#00#];
+      R_Trailing : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All_Strict (Trailing);
+      R_Permissive : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Trailing);
+   begin
+      TIO.Put_Line ("  Decode_All_Strict:");
+      Check_Status ("strict exact", CBOR.OK, R_Exact.Status);
+      Check ("strict exact count", 1,
+             UInt64 (R_Exact.Count));
+      Check_Status ("strict trailing",
+                    CBOR.Err_Truncated, R_Trailing.Status);
+      Check_Status ("permissive trailing",
+                    CBOR.OK, R_Permissive.Status);
+   end Test_Decode_All_Strict;
+
 begin
    TIO.Put_Line ("=== CBOR Ada Test Suite ===");
    TIO.New_Line;
@@ -776,6 +798,7 @@ begin
    Test_Float_Decode;
    Test_Top_Level_Break;
    Test_Empty_Strings;
+   Test_Decode_All_Strict;
 
    TIO.New_Line;
    TIO.Put_Line ("=== Results ===");

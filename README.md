@@ -126,9 +126,9 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 
 | Component    | Proved | Notes |
 |-------------|--------|-------|
-| Encoder     | 100%   | 142/142 checks proved (Level 2) |
-| Decoder     | 100%   | 310/310 checks proved (Level 1) |
-| **Total**   | **100%** | **452/452 checks proved, 0 unproved** |
+| Encoder     | 100%   | Proved at Level 2 |
+| Decoder     | 100%   | Proved at Level 1 and Level 2 |
+| **Total**   | **100%** | **413/413 checks proved, 0 unproved** |
 
 ## Limitations
 
@@ -142,7 +142,7 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 ## Dependencies
 
 - GNAT >= 15.1 (Ada 2022)
-- gnatprove >= 15.1 (for SPARK proofs, optional)
+- gnatprove >= 15.1 (bundled via Alire; only needed for SPARK proofs — consumers can `alr with --del gnatprove` if not needed)
 
 ## License
 

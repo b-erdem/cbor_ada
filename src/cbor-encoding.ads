@@ -34,9 +34,10 @@ package CBOR.Encoding is
 
    --  Encode definite-length text string (major type 3).
    --  Serializes raw Character'Pos bytes (Latin-1 byte values).
-   --  For UTF-8 content, pass pre-encoded bytes via Encode_Byte_String
-   --  with major type 3, or ensure the String already contains valid
-   --  UTF-8 byte sequences (works for pure ASCII). Does NOT validate.
+   --  For UTF-8 content, ensure the String contains only ASCII
+   --  characters, or encode the UTF-8 bytes manually using
+   --  Encode_Byte_String and major type 3 head encoding.
+   --  Does NOT validate UTF-8.
    function Encode_Text_String
      (Text : String)
       return Ada.Streams.Stream_Element_Array
