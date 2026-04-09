@@ -84,6 +84,7 @@ cbor_ada/
 - `Head_Size(AI)`: Returns 1|2|3|5|9 with postcondition.
 - `Get_String(Data, Ref)`: Extract string content. Returns `(1 .. Ref.Length)` array. Works for empty strings.
 - `Decode_All(Data, Check_UTF8)`: Iterative stack-based tree decode. Max depth 16.
+- `Decode_All_Strict(Data, Check_UTF8)`: Like Decode_All but rejects trailing bytes.
 - `Is_Valid_UTF8(Data)`: Full RFC 3629 validation.
 
 **Internal structure of Decode:**
@@ -112,8 +113,8 @@ cbor_ada/
 
 ### What's proved
 - **Encoder**: 100% (142/142 at Level 2)
-- **Decoder**: ~96% (411/428 at Level 1)
-- All overflow checks pass thanks to overflow-safe arithmetic
+- **Decoder**: 100% (312/312 at Level 1)
+- **Total**: 454/454, 0 unproved
 
 ### Key techniques used
 - **Overflow-safe arithmetic**: `Data'Last - Pos >= N - 1` instead of `Pos + N <= Data'Last`
@@ -125,14 +126,13 @@ cbor_ada/
 
 ### 17 unproved checks (known, safe by manual analysis)
 
-All in `cbor-decoding.adb`. Categories:
-
-1. **Read_Arg array index (4)**: `Data(Pos+1/2/4/8)` — SPARK can't derive array bounds from `Has_Head` precondition through `Head_Size` function calls. Safe because `Has_Head` guarantees `Data'Last - Pos >= Head_Size(AI) - 1`.
-2. **Decode simple value (1)**: `Data(P+1)` when `AI=24` — same issue.
-3. **Stack(Depth) index (3)**: In `Pop_And_Propagate` inlined calls — `Depth >= 1` from loop invariant not propagated through inlining.
-4. **Handle_Container Stack(Depth) (1)**: After `Push`, `Depth <= Max_Nesting_Depth` not tracked.
-5. **Get_String/Is_Valid_UTF8 preconditions (4)**: `Ref.First >= Data'First`, `Data'First >= 0` — Decode's postconditions not fully propagated through Decode_All loop.
-6. **Decode_All loop invariants (4)**: `Depth <= Max_Nesting_Depth`, `Result.Count >= 1`, `Result.Count < Max_Decode_Items` — not preserved/established because SPARK can't track `Handle_Container` side effects on `Depth` and `Result.Count`.
+### Key techniques for achieving 100%
+- **Case-expression matching**: `Has_Head`, `Head_End`, and `Float_Ref.Length` all use identical case expressions on AI, so SPARK can directly match bounds without chaining through `Head_Size`
+- **`Handle_Container` postcondition**: `Result.Count = Result.Count'Old` lets SPARK track count through the call
+- **`Depth_Count` subtype**: `Natural range 0 .. Max_Nesting_Depth` tightens Depth range
+- **Decode postcondition extended**: Includes `Ref.Length <= Data'Last` for all ref types
+- **`Get_String` postcondition**: `Result'First = 1`, `Result'Length = Ref.Length`, `Result'Last = Ref.Length`
+- **Overflow-safe arithmetic**: `Data'Last - Pos >= N` instead of `Pos + N <= Data'Last`
 
 ### What NOT to do
 - **Don't use `pragma Overflow_Mode`**: Ignored by gnatprove, only affects runtime.

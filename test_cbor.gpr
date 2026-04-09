@@ -9,9 +9,8 @@ project Test_Cbor is
 
    package Linker is
       for Switches ("Ada") use
-        ("-L/Applications/Xcode.app/Contents/Developer/"
-         & "Platforms/MacOSX.platform/Developer/SDKs/"
-         & "MacOSX.sdk/usr/lib");
+        ("-L" & external ("SDKROOT",
+         "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"));
    end Linker;
 
    package Compiler is

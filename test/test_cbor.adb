@@ -3,6 +3,7 @@ with CBOR.Encoding;
 with CBOR.Decoding;
 with Ada.Streams;
 with Ada.Text_IO;
+with GNAT.OS_Lib;
 with Interfaces;
 
 procedure Test_Cbor is
@@ -783,6 +784,7 @@ begin
 
    if Fails > 0 then
       TIO.Put_Line ("SOME TESTS FAILED");
+      GNAT.OS_Lib.OS_Exit (1);
    else
       TIO.Put_Line ("ALL TESTS PASSED");
    end if;

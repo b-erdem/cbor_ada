@@ -105,8 +105,7 @@ package CBOR is
    --    MT_Tag              => Tag_Number (0 .. 2^64-1)
    --    MT_Simple_Value     => SV_Value (0..23, 32..255)
    --                          Float_Ref for AI 25/26/27 (half/single/double)
-   --                          SV_Value=31 means break (from Decode_All or
-   --                          Decode at a non-initial offset)
+   --                          SV_Value=31 means break (only from Decode_All)
    type CBOR_Item (Kind : Major_Type := MT_Unsigned_Integer) is record
       Head_Start : SE_Offset := 1;
       Head_End   : SE_Offset := 1;

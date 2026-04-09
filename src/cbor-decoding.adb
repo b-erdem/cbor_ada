@@ -956,7 +956,24 @@ package body CBOR.Decoding is
          Result.Status := Err_Truncated;
       end if;
 
-      return Result;
-   end Decode_All;
+       return Result;
+    end Decode_All;
+
+   function Decode_All_Strict
+     (Data       : Ada.Streams.Stream_Element_Array;
+      Check_UTF8 : Boolean := False)
+      return Decode_All_Result
+   is
+      R : constant Decode_All_Result :=
+        Decode_All (Data, Check_UTF8);
+   begin
+      if R.Status = OK and then R.Last_Pos /= Data'Last then
+         return (Status   => Err_Truncated,
+                 Items    => R.Items,
+                 Count    => R.Count,
+                 Last_Pos => R.Last_Pos);
+      end if;
+      return R;
+   end Decode_All_Strict;
 
 end CBOR.Decoding;

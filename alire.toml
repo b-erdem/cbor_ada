@@ -6,7 +6,6 @@ authors = ["Baris Erdem"]
 maintainers = ["Baris Erdem <baris@erdem.dev>"]
 maintainers-logins = ["b-erdem"]
 licenses = "AGPL-3.0-or-later"
-website = ""
 tags = ["cbor", "rfc8949", "serialization", "spark", "embedded", "iot"]
 
 [[depends-on]]

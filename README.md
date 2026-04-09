@@ -127,7 +127,8 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 | Component    | Proved | Notes |
 |-------------|--------|-------|
 | Encoder     | 100%   | 142/142 checks proved (Level 2) |
-| Decoder     | ~96%   | 404/421 checks proved (Level 1); unproved are array index / precondition propagation through function calls — all safe by manual analysis |
+| Decoder     | 100%   | 310/310 checks proved (Level 1) |
+| **Total**   | **100%** | **452/452 checks proved, 0 unproved** |
 
 ## Limitations
 
@@ -135,12 +136,13 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 - No half-precision float conversion utility (Layer 2, not yet implemented)
 - UTF-8 validation is opt-in via `Check_UTF8` parameter
 - `Decode_All` returns at most 128 items (`Max_Decode_Items`)
-- `Encode_Text_String` does not validate UTF-8 (caller responsibility)
+- `Encode_Text_String` serializes raw Character'Pos bytes (Latin-1); for UTF-8, pass pre-encoded bytes or ensure ASCII-only content (caller responsibility)
+- `Decode_All` accepts trailing bytes after the top-level item; use `Decode_All_Strict` to reject them
 
 ## Dependencies
 
 - GNAT >= 15.1 (Ada 2022)
-- gnatprove >= 15.1 (for SPARK proofs)
+- gnatprove >= 15.1 (for SPARK proofs, optional)
 
 ## License
 

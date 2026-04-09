@@ -28,9 +28,9 @@ package CBOR.Decoding is
 
    --  Decode a single CBOR data item starting at Pos.
    --  Pos = 0 means Data'First. Returns the decoded item and
-   --  the offset of the last byte consumed. When decoding from a
-   --  non-initial position, a break token may be returned to support
-   --  stepwise traversal of indefinite-length containers.
+   --  the offset of the last byte consumed. Standalone break
+   --  (0xFF) is rejected as Err_Not_Well_Formed; use Decode_All
+   --  for parsing indefinite-length containers.
    function Decode
      (Data  : Ada.Streams.Stream_Element_Array;
       Pos   : Ada.Streams.Stream_Element_Offset := 0)
@@ -128,6 +128,15 @@ package CBOR.Decoding is
       return Decode_All_Result
       with Pre => Data'First >= 0
                   and then Data'Last <= Max_Data_Length;
+
+   --  Like Decode_All but rejects trailing bytes after the top-level
+   --  item. Returns Err_Truncated if Last_Pos /= Data'Last.
+   function Decode_All_Strict
+     (Data       : Ada.Streams.Stream_Element_Array;
+      Check_UTF8 : Boolean := False)
+      return Decode_All_Result
+     with Pre => Data'First >= 0
+                 and then Data'Last <= Max_Data_Length;
 
    --  Validate byte array as UTF-8 per RFC 3629.
    --  Rejects overlong encodings, surrogates (U+D800..U+DFFF),
