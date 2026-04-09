@@ -1,0 +1,11 @@
+obj/
+lib/
+bin/
+alire/
+config/
+*.o
+*.ali
+*.a
+*.cswi
+*.lexch
+*.bexch

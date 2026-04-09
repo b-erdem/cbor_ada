@@ -1,0 +1,23 @@
+with "cbor_ada.gpr";
+
+project Test_Cbor is
+
+   for Main use ("test_cbor.adb");
+   for Source_Dirs use ("test");
+   for Object_Dir use "obj/test";
+   for Exec_Dir use "bin";
+
+   package Linker is
+      for Switches ("Ada") use
+        ("-L/Applications/Xcode.app/Contents/Developer/"
+         & "Platforms/MacOSX.platform/Developer/SDKs/"
+         & "MacOSX.sdk/usr/lib");
+   end Linker;
+
+   package Compiler is
+      for Switches ("Ada") use
+        ("-g", "-O0", "-gnatwa", "-gnatW8",
+         "-gnatyM120", "-gnat2022");
+   end Compiler;
+
+end Test_Cbor;
