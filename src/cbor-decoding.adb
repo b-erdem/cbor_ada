@@ -663,6 +663,8 @@ package body CBOR.Decoding is
          Is_A_Map   : Boolean := False;
          Container  : CBOR.Major_Type :=
            CBOR.MT_Unsigned_Integer)
+      with Post => Result.Count = Result.Count'Old
+                   and then Depth <= Max_Nesting_Depth
       is
       begin
          if Depth = Max_Nesting_Depth then
@@ -674,11 +676,15 @@ package body CBOR.Decoding is
                            Container);
       end Push;
 
-      procedure Pop_And_Propagate is
+      procedure Pop_And_Propagate
+      with Post => Result.Count = Result.Count'Old
+                   and then Depth <= Depth'Old
+      is
       begin
          while Depth > 0 loop
             pragma Loop_Variant (Decreases => Depth);
             pragma Loop_Invariant (Depth <= Max_Nesting_Depth);
+            pragma Loop_Invariant (Depth <= Depth'Loop_Entry);
             if Stack (Depth).Kind = CK_Definite then
                if Stack (Depth).Remaining > 0 then
                   Stack (Depth).Remaining :=
@@ -702,6 +708,7 @@ package body CBOR.Decoding is
         (Item : CBOR.CBOR_Item)
       with Pre => Item.Head_Start in Data'Range,
            Post => Result.Count = Result.Count'Old
+                   and then Depth <= Max_Nesting_Depth
       is
          AI : constant Unsigned_8 := Raw_AI (Item);
          Max_Map_Entries : constant UInt64 := UInt64'Last / 2;

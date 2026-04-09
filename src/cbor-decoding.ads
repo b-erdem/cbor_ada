@@ -26,6 +26,36 @@ package CBOR.Decoding is
    Max_Data_Length : constant Ada.Streams.Stream_Element_Offset :=
      Ada.Streams.Stream_Element_Offset'Last / 2;
 
+   --  True when Ref points to a valid slice within Data.
+   function Valid_String_Ref
+     (Data : Ada.Streams.Stream_Element_Array;
+      Ref  : String_Ref)
+      return Boolean
+   is
+     (Data'First >= 0
+      and then Data'Last <= Max_Data_Length
+      and then (if Ref.Length > 0 then
+                   Ref.First >= Data'First
+                   and then Ref.First <= Data'Last
+                   and then Ref.Length <= Data'Last
+                   and then Data'Last - Ref.First
+                                >= Ref.Length - 1))
+     with Ghost;
+
+   --  True when all string-like refs in Item are valid for Data.
+   function Valid_Item_Refs
+     (Data : Ada.Streams.Stream_Element_Array;
+      Item : CBOR_Item)
+      return Boolean
+   is
+     (case Item.Kind is
+         when MT_Text_String  => Valid_String_Ref (Data, Item.TS_Ref),
+         when MT_Byte_String  => Valid_String_Ref (Data, Item.BS_Ref),
+         when MT_Simple_Value => Valid_String_Ref (Data, Item.Float_Ref),
+         when others          => True)
+     with Ghost,
+          Pre => Data'First >= 0 and then Data'Last <= Max_Data_Length;
+
    --  Decode a single CBOR data item starting at Pos.
    --  Pos = 0 means Data'First. Returns the decoded item and
    --  the offset of the last byte consumed. Standalone break
@@ -48,50 +78,8 @@ package CBOR.Decoding is
                         in Data'Range
                       and then Decode'Result.Item.Head_End
                         >= Decode'Result.Item.Head_Start
-                      and then (case Decode'Result.Item.Kind is
-                          when CBOR.MT_Text_String =>
-                            (if Decode'Result.Item.TS_Ref.Length > 0
-                             then Decode'Result.Item.TS_Ref.First
-                                    >= Data'First
-                                  and then
-                                    Decode'Result.Item.TS_Ref.First
-                                      <= Data'Last
-                                  and then
-                                    Decode'Result.Item.TS_Ref.Length
-                                      <= Data'Last
-                                  and then
-                                    Data'Last
-                                      - Decode'Result.Item.TS_Ref.First
-                                      >= Decode'Result.Item.TS_Ref.Length - 1),
-                         when CBOR.MT_Byte_String =>
-                            (if Decode'Result.Item.BS_Ref.Length > 0
-                             then Decode'Result.Item.BS_Ref.First
-                                    >= Data'First
-                                  and then
-                                    Decode'Result.Item.BS_Ref.First
-                                      <= Data'Last
-                                  and then
-                                    Decode'Result.Item.BS_Ref.Length
-                                      <= Data'Last
-                                  and then
-                                    Data'Last
-                                      - Decode'Result.Item.BS_Ref.First
-                                      >= Decode'Result.Item.BS_Ref.Length - 1),
-                         when CBOR.MT_Simple_Value =>
-                            (if Decode'Result.Item.Float_Ref.Length > 0
-                             then Decode'Result.Item.Float_Ref.First
-                                    >= Data'First
-                                  and then
-                                    Decode'Result.Item.Float_Ref.First
-                                      <= Data'Last
-                                  and then
-                                    Decode'Result.Item.Float_Ref.Length
-                                      <= Data'Last
-                                  and then
-                                    Data'Last
-                                      - Decode'Result.Item.Float_Ref.First
-                                      >= Decode'Result.Item.Float_Ref.Length - 1),
-                         when others => True));
+                      and then Valid_Item_Refs
+                                 (Data, Decode'Result.Item));
 
    --  Return the head size in bytes for a given additional info.
    function Head_Size
@@ -105,14 +93,7 @@ package CBOR.Decoding is
      (Data : Ada.Streams.Stream_Element_Array;
       Ref  : String_Ref)
       return Ada.Streams.Stream_Element_Array
-      with Pre => Data'First >= 0
-                  and then Data'Last <= Max_Data_Length
-                  and then (if Ref.Length > 0 then
-                             Ref.Length <= Data'Last
-                             and then Ref.First >= Data'First
-                             and then Ref.First <= Data'Last
-                             and then Data'Last - Ref.First
-                                        >= Ref.Length - 1),
+      with Pre => Valid_String_Ref (Data, Ref),
            Post => Get_String'Result'First = 1
                    and then Get_String'Result'Length = Ref.Length
                    and then Get_String'Result'Last = Ref.Length;
