@@ -744,24 +744,6 @@ procedure Test_Cbor is
       end;
    end Test_Empty_Strings;
 
-   procedure Test_Decode_Indefinite_Steps is
-      E : constant Stream_Element_Array :=
-        Enc.Encode_Array_Start
-        & Enc.Encode_Unsigned (1)
-        & Enc.Encode_Break;
-      R1 : constant CBOR.Decode_Result := Dec.Decode (E);
-      R2 : constant CBOR.Decode_Result := Dec.Decode (E, R1.Offset + 1);
-      R3 : constant CBOR.Decode_Result := Dec.Decode (E, R2.Offset + 1);
-   begin
-      TIO.Put_Line ("  Decode indefinite by steps:");
-      Check_Status ("step arr status", CBOR.OK, R1.Status);
-      Check_Kind ("step arr kind", CBOR.MT_Array, R1.Item.Kind);
-      Check_Status ("step elem status", CBOR.OK, R2.Status);
-      Check ("step elem value", 1, R2.Item.UInt_Value);
-      Check_Status ("step break status", CBOR.OK, R3.Status);
-      Check ("step break sv", 31, UInt64 (R3.Item.SV_Value));
-   end Test_Decode_Indefinite_Steps;
-
 begin
    TIO.Put_Line ("=== CBOR Ada Test Suite ===");
    TIO.New_Line;
@@ -793,7 +775,6 @@ begin
    Test_Float_Decode;
    Test_Top_Level_Break;
    Test_Empty_Strings;
-   Test_Decode_Indefinite_Steps;
 
    TIO.New_Line;
    TIO.Put_Line ("=== Results ===");

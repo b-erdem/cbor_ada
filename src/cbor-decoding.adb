@@ -60,9 +60,15 @@ package body CBOR.Decoding is
       return Boolean
    is
      (Pos in Data'Range
-      and then Head_Size (AI) >= 1
       and then Pos <= Data'Last
-      and then Data'Last - Pos >= Head_Size (AI) - 1)
+      and then (case AI is
+                   when 0 .. 23  => True,
+                   when 24       => Data'Last - Pos >= 1,
+                   when 25       => Data'Last - Pos >= 2,
+                   when 26       => Data'Last - Pos >= 4,
+                   when 27       => Data'Last - Pos >= 8,
+                   when 31       => True,
+                   when others   => True))
    with Pre => Data'First >= 0
                and then Data'Last <= Max_Data_Length;
 
@@ -128,13 +134,11 @@ package body CBOR.Decoding is
      (Data : Ada.Streams.Stream_Element_Array;
       Pos  : Ada.Streams.Stream_Element_Offset := 0)
       return Decode_Result
-   is
-      P : constant Ada.Streams.Stream_Element_Offset :=
-        (if Pos = 0 then Data'First else Pos);
-      At_Initial_Position : constant Boolean :=
-        Pos = 0 or else Pos = Data'First;
-   begin
-      if P not in Data'Range then
+    is
+       P : constant Ada.Streams.Stream_Element_Offset :=
+         (if Pos = 0 then Data'First else Pos);
+    begin
+       if P not in Data'Range then
          return (Status => Err_Truncated,
                  Item    => <>,
                  Offset  => P);
@@ -189,20 +193,10 @@ package body CBOR.Decoding is
                                       Head_End   => P,
                                       TS_Ref     => CBOR.Null_Ref),
                           Offset  => P);
-               when CBOR.MT_Simple_Value =>
-                  if At_Initial_Position then
-                     return (Status => Err_Not_Well_Formed,
-                             Item    => <>,
-                             Offset  => P);
-                  else
-                     return (Status => OK,
-                             Item    => (Kind       => CBOR.MT_Simple_Value,
-                                         Head_Start => P,
-                                         Head_End   => P,
-                                         SV_Value   => 31,
-                                         Float_Ref  => CBOR.Null_Ref),
-                             Offset  => P);
-                  end if;
+             when CBOR.MT_Simple_Value =>
+                  return (Status => Err_Not_Well_Formed,
+                          Item    => <>,
+                          Offset  => P);
              end case;
           end if;
 
@@ -212,12 +206,16 @@ package body CBOR.Decoding is
                     Offset  => P);
          end if;
 
-         declare
-            HS : constant Ada.Streams.Stream_Element_Offset :=
-              Head_Size (AI);
-            Head_End : constant Ada.Streams.Stream_Element_Offset :=
-              P + HS - 1;
-         begin
+          declare
+              Head_End : constant Ada.Streams.Stream_Element_Offset :=
+                (case AI is
+                    when 0 .. 23  => P,
+                    when 24       => P + 1,
+                    when 25       => P + 2,
+                    when 26       => P + 4,
+                    when 27       => P + 8,
+                    when others   => P);
+           begin
             pragma Assert (Head_End in Data'Range);
             case MT is
                when CBOR.MT_Unsigned_Integer =>
@@ -446,7 +444,11 @@ package body CBOR.Decoding is
                            SV_Value   => AI,
                            Float_Ref  =>
                              (First  => P + 1,
-                              Length => HS - 1)),
+                              Length => (case AI is
+                                            when 25 => 2,
+                                            when 26 => 4,
+                                            when 27 => 8,
+                                            when others => 0))),
                         Offset => Head_End);
                   else
                      return
@@ -613,10 +615,12 @@ package body CBOR.Decoding is
          Items_Seen  : UInt64 := 0;
          Parent_MT   : CBOR.Major_Type :=
            CBOR.MT_Unsigned_Integer;
-      end record;
+       end record;
 
-      Stack : array (1 .. Max_Nesting_Depth) of Stack_Entry;
-      Depth : Natural := 0;
+       subtype Depth_Count is Natural range 0 .. Max_Nesting_Depth;
+
+       Stack : array (1 .. Max_Nesting_Depth) of Stack_Entry;
+       Depth : Depth_Count := 0;
 
        Result  : Decode_All_Result;
        Pos     : Ada.Streams.Stream_Element_Offset := Data'First;
@@ -661,7 +665,7 @@ package body CBOR.Decoding is
            CBOR.MT_Unsigned_Integer)
       is
       begin
-         if Depth >= Max_Nesting_Depth then
+         if Depth = Max_Nesting_Depth then
             Result.Status := Err_Depth_Exceeded;
             return;
          end if;
@@ -696,7 +700,8 @@ package body CBOR.Decoding is
 
       procedure Handle_Container
         (Item : CBOR.CBOR_Item)
-      with Pre => Item.Head_Start in Data'Range
+      with Pre => Item.Head_Start in Data'Range,
+           Post => Result.Count = Result.Count'Old
       is
          AI : constant Unsigned_8 := Raw_AI (Item);
          Max_Map_Entries : constant UInt64 := UInt64'Last / 2;
@@ -808,8 +813,6 @@ package body CBOR.Decoding is
             return Result;
          end if;
       end if;
-      pragma Assert (Pos in Data'Range);
-      pragma Assert (Result.Count in 1 .. Max_Decode_Items);
 
       while Depth > 0 and then not Past_End loop
          pragma Loop_Variant

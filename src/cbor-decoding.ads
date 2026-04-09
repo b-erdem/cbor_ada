@@ -49,12 +49,15 @@ package CBOR.Decoding is
                       and then Decode'Result.Item.Head_End
                         >= Decode'Result.Item.Head_Start
                       and then (case Decode'Result.Item.Kind is
-                         when CBOR.MT_Text_String =>
+                          when CBOR.MT_Text_String =>
                             (if Decode'Result.Item.TS_Ref.Length > 0
                              then Decode'Result.Item.TS_Ref.First
                                     >= Data'First
                                   and then
                                     Decode'Result.Item.TS_Ref.First
+                                      <= Data'Last
+                                  and then
+                                    Decode'Result.Item.TS_Ref.Length
                                       <= Data'Last
                                   and then
                                     Data'Last
@@ -68,6 +71,9 @@ package CBOR.Decoding is
                                     Decode'Result.Item.BS_Ref.First
                                       <= Data'Last
                                   and then
+                                    Decode'Result.Item.BS_Ref.Length
+                                      <= Data'Last
+                                  and then
                                     Data'Last
                                       - Decode'Result.Item.BS_Ref.First
                                       >= Decode'Result.Item.BS_Ref.Length - 1),
@@ -77,6 +83,9 @@ package CBOR.Decoding is
                                     >= Data'First
                                   and then
                                     Decode'Result.Item.Float_Ref.First
+                                      <= Data'Last
+                                  and then
+                                    Decode'Result.Item.Float_Ref.Length
                                       <= Data'Last
                                   and then
                                     Data'Last
@@ -99,10 +108,14 @@ package CBOR.Decoding is
       with Pre => Data'First >= 0
                   and then Data'Last <= Max_Data_Length
                   and then (if Ref.Length > 0 then
-                             Ref.First >= Data'First
+                             Ref.Length <= Data'Last
+                             and then Ref.First >= Data'First
                              and then Ref.First <= Data'Last
                              and then Data'Last - Ref.First
-                                        >= Ref.Length - 1);
+                                        >= Ref.Length - 1),
+           Post => Get_String'Result'First = 1
+                   and then Get_String'Result'Length = Ref.Length
+                   and then Get_String'Result'Last = Ref.Length;
 
    --  Decode a complete CBOR data item tree with nested items.
    --  Uses an iterative stack (max depth = Max_Nesting_Depth).
