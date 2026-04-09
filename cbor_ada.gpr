@@ -7,10 +7,10 @@ library project Cbor_Ada is
    for Source_Dirs use ("src");
    for Languages use ("Ada");
 
-   package Compiler is
-      for Switches ("Ada") use
-        ("-g", "-O2", "-gnatwa", "-gnatW8", "-gnatyM120",
-         "-gnat2022");
-   end Compiler;
+    package Compiler is
+       for Switches ("Ada") use
+         ("-g", "-O2", "-gnatwa", "-gnatW8", "-gnatyM120",
+          "-gnat2022");
+    end Compiler;
 
 end Cbor_Ada;

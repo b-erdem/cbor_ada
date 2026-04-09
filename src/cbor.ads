@@ -1,3 +1,13 @@
+--  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
+--  SPDX-License-Identifier: AGPL-3.0-or-later
+--
+--  This program is free software: you can redistribute it and/or modify
+--  it under the terms of the GNU Affero General Public License as published
+--  by the Free Software Foundation, either version 3 of the License, or
+--  (at your option) any later version.
+--
+--  For commercial licensing terms, contact baris@erdem.dev.
+
 with Ada.Streams;
 with Interfaces;
 
@@ -91,7 +101,7 @@ package CBOR is
    --    MT_Array            => Arr_Count (UInt64'Last = indefinite)
    --    MT_Map              => Map_Count (UInt64'Last = indefinite)
    --    MT_Tag              => Tag_Number (0 .. 2^64-1)
-   --    MT_Simple_Value     => SV_Value (0..23, 32..255)
+   --    MT_Simple_Value     => SV_Value (0..23, 31, 32..255)
    type CBOR_Item (Kind : Major_Type := MT_Unsigned_Integer) is record
       Head_Start : SE_Offset := 1;
       Head_End   : SE_Offset := 1;

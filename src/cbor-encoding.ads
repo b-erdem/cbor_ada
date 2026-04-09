@@ -1,3 +1,8 @@
+--  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
+--  SPDX-License-Identifier: AGPL-3.0-or-later
+--
+--  For commercial licensing terms, contact baris@erdem.dev.
+
 --  SPARK-proved CBOR encoder (RFC 8949).
 --  All functions produce well-formed, shortest-form CBOR.
 --  The entire package is proved at SPARK Level 2 (no runtime errors).

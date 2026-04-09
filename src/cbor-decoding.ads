@@ -1,3 +1,8 @@
+--  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
+--  SPDX-License-Identifier: AGPL-3.0-or-later
+--
+--  For commercial licensing terms, contact baris@erdem.dev.
+
 --  CBOR decoder (RFC 8949) with well-formedness validation.
 --
 --  Well-formedness checks performed:
@@ -18,6 +23,9 @@ package CBOR.Decoding is
 
    use type Ada.Streams.Stream_Element_Offset;
 
+   Max_Data_Length : constant Ada.Streams.Stream_Element_Offset :=
+     Ada.Streams.Stream_Element_Offset'Last / 2;
+
    --  Decode a single CBOR data item starting at Pos.
    --  Pos = 0 means Data'First. Returns the decoded item and
    --  the offset of the last byte consumed.
@@ -25,13 +33,41 @@ package CBOR.Decoding is
      (Data  : Ada.Streams.Stream_Element_Array;
       Pos   : Ada.Streams.Stream_Element_Offset := 0)
       return Decode_Result
-     with Pre => Pos = 0
-                  or else Pos in Data'Range;
+     with Pre => Data'First >= 0
+                 and then Data'Last <= Max_Data_Length
+                 and then (Pos = 0
+                           or else Pos in Data'Range),
+          Post => (if Decode'Result.Status = OK then
+                      Decode'Result.Item.Head_Start
+                        in Data'Range
+                      and then Decode'Result.Item.Head_End
+                        in Data'Range
+                      and then Decode'Result.Offset
+                        in Data'Range
+                      and then Decode'Result.Item.Head_End
+                        >= Decode'Result.Item.Head_Start
+                      and then (case Decode'Result.Item.Kind is
+                         when CBOR.MT_Text_String =>
+                            (if Decode'Result.Item.TS_Ref.Length > 0
+                             then Decode'Result.Item.TS_Ref.First
+                                    >= Data'First
+                                  and then
+                                    Decode'Result.Item.TS_Ref.First
+                                      <= Data'Last),
+                         when CBOR.MT_Byte_String =>
+                            (if Decode'Result.Item.BS_Ref.Length > 0
+                             then Decode'Result.Item.BS_Ref.First
+                                    >= Data'First
+                                  and then
+                                    Decode'Result.Item.BS_Ref.First
+                                      <= Data'Last),
+                         when others => True));
 
    --  Return the head size in bytes for a given additional info.
    function Head_Size
      (AI : Interfaces.Unsigned_8)
-      return Ada.Streams.Stream_Element_Offset;
+      return Ada.Streams.Stream_Element_Offset
+     with Post => Head_Size'Result in 1 | 2 | 3 | 5 | 9;
 
    --  Extract byte/text string content from Data using a String_Ref.
    --  Returns a new array with bounds 1 .. Ref.Length.
@@ -39,8 +75,12 @@ package CBOR.Decoding is
      (Data : Ada.Streams.Stream_Element_Array;
       Ref  : String_Ref)
       return Ada.Streams.Stream_Element_Array
-     with Pre => Ref.First in Data'Range
-                 and then Ref.Length <= Data'Last - Ref.First + 1;
+      with Pre => Data'First >= 0
+                  and then Data'Last <= Max_Data_Length
+                  and then Ref.Length > 0
+                 and then Ref.First >= Data'First
+                 and then Ref.First <= Data'Last
+                 and then Data'Last - Ref.First >= Ref.Length - 1;
 
    --  Decode a complete CBOR data item tree with nested items.
    --  Uses an iterative stack (max depth = Max_Nesting_Depth).
@@ -50,13 +90,17 @@ package CBOR.Decoding is
    function Decode_All
      (Data       : Ada.Streams.Stream_Element_Array;
       Check_UTF8 : Boolean := False)
-      return Decode_All_Result;
+      return Decode_All_Result
+      with Pre => Data'First >= 0
+                  and then Data'Last <= Max_Data_Length;
 
    --  Validate byte array as UTF-8 per RFC 3629.
    --  Rejects overlong encodings, surrogates (U+D800..U+DFFF),
    --  and code points above U+10FFFF.
    function Is_Valid_UTF8
      (Data : Ada.Streams.Stream_Element_Array)
-      return Boolean;
+      return Boolean
+     with Pre => Data'First >= 0
+                 and then Data'Last <= Max_Data_Length;
 
 end CBOR.Decoding;

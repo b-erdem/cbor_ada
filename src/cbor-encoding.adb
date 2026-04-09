@@ -1,3 +1,6 @@
+--  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
+--  SPDX-License-Identifier: AGPL-3.0-or-later
+
 with Interfaces;
 
 package body CBOR.Encoding is

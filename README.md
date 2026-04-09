@@ -41,7 +41,7 @@ Bytes := Encode_Byte_String (Raw_Bytes);
 --  Array header followed by elements
 Output := Encode_Array (3)
   & Encode_Unsigned (1)
-  & Encode_Text_String "two")
+  & Encode_Text_String ("two")
   & Encode_Bool (True);
 
 --  Map header followed by key-value pairs
@@ -62,6 +62,8 @@ Encode_Simple (32);
 
 --  Floats (raw bytes, no conversion)
 Encode_Float_Half ([16#3C#, 16#00#]);
+Encode_Float_Single ([16#3F#, 16#80#, 16#00#, 16#00#]);
+Encode_Float_Double ([16#3F#, 16#F0#, 16#00#, 16#00#, 16#00#, 16#00#, 16#00#, 16#00#]);
 
 --  Indefinite-length starts
 Encode_Array_Start;          --  0x9F ... Encode_Break
@@ -122,10 +124,10 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 
 ## SPARK proof status
 
-| Component    | Checks | Proved | Unproved |
-|-------------|--------|--------|----------|
-| Encoder     | 142    | 142    | 0        |
-| Decoder     | N/A    | N/A    | SPARK_Mode Off (uses Unchecked_Conversion) |
+| Component    | Proved | Notes |
+|-------------|--------|-------|
+| Encoder     | 100%   | 142/142 checks proved (Level 2) |
+| Decoder     | ~96%   | 404/421 checks proved (Level 1); unproved are array index / precondition propagation through function calls — all safe by manual analysis |
 
 ## Limitations
 
@@ -138,8 +140,8 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 ## Dependencies
 
 - GNAT >= 15.1 (Ada 2022)
-- gnatprove >= 15.1 (for SPARK proofs, optional)
+- gnatprove >= 15.1 (for SPARK proofs)
 
 ## License
 
-MIT
+AGPL-3.0-or-later — free for open-source use. For use in proprietary or commercial products, contact [baris@erdem.dev](mailto:baris@erdem.dev) for a commercial license.
