@@ -5,7 +5,7 @@ version = "0.1.0-dev"
 authors = ["Baris Erdem"]
 maintainers = ["Baris Erdem <baris@erdem.dev>"]
 maintainers-logins = ["b-erdem"]
-licenses = "AGPL-3.0-or-later"
+licenses = "Apache-2.0"
 tags = ["cbor", "rfc8949", "serialization", "spark", "embedded", "iot"]
 
 [[depends-on]]

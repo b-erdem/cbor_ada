@@ -146,4 +146,4 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 
 ## License
 
-AGPL-3.0-or-later — free for open-source use. For use in proprietary or commercial products, contact [baris@erdem.dev](mailto:baris@erdem.dev) for a commercial license.
+Apache-2.0. Certification artifacts, safety case documentation, and formal verification evidence packages available for safety-critical deployments — contact [baris@erdem.dev](mailto:baris@erdem.dev).

@@ -5,7 +5,7 @@
 CBOR (RFC 8949) encoding/decoding library in Ada/SPARK, designed for maximum formal verification. The goal is mathematical proofs of no runtime errors via SPARK/gnatprove. Published to Alire package manager.
 
 - **Author**: Baris Erdem (`baris@erdem.dev`, GitHub `b-erdem`)
-- **License**: AGPL-3.0-or-later (commercial licensing available)
+- **License**: Apache-2.0 (certification/safety evidence packages available)
 - **Repo** (not yet pushed): `b-erdem/cbor_ada`
 
 ## Toolchain
@@ -42,7 +42,7 @@ cat obj/gnatprove/cbor-decoding.adb.stderr
 
 ```
 cbor_ada/
-├── alire.toml              # Package manifest (AGPL-3.0-or-later)
+├── alire.toml              # Package manifest (Apache-2.0)
 ├── cbor_ada.gpr            # Library project (static, Ada 2022)
 ├── test_cbor.gpr           # Test project (macOS SDK linker flags)
 ├── src/
@@ -53,7 +53,7 @@ cbor_ada/
 │   └── cbor-decoding.adb   # Decoder body — ~96% proved (411/428 at Level 1)
 ├── test/
 │   └── test_cbor.adb       # 157 tests across 26 test procedures
-└── LICENSE                  # AGPL-3.0 full text
+└── LICENSE                  # Apache-2.0 full text
 ```
 
 ## Architecture

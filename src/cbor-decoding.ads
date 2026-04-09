@@ -1,7 +1,5 @@
 --  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
---  SPDX-License-Identifier: AGPL-3.0-or-later
---
---  For commercial licensing terms, contact baris@erdem.dev.
+--  SPDX-License-Identifier: Apache-2.0
 
 --  CBOR decoder (RFC 8949) with well-formedness validation.
 --

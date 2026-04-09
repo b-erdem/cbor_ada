@@ -1,5 +1,5 @@
 --  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
---  SPDX-License-Identifier: AGPL-3.0-or-later
+--  SPDX-License-Identifier: Apache-2.0
 
 with Interfaces;
 
