@@ -28,7 +28,9 @@ package CBOR.Decoding is
 
    --  Decode a single CBOR data item starting at Pos.
    --  Pos = 0 means Data'First. Returns the decoded item and
-   --  the offset of the last byte consumed.
+   --  the offset of the last byte consumed. When decoding from a
+   --  non-initial position, a break token may be returned to support
+   --  stepwise traversal of indefinite-length containers.
    function Decode
      (Data  : Ada.Streams.Stream_Element_Array;
       Pos   : Ada.Streams.Stream_Element_Offset := 0)
@@ -53,14 +55,33 @@ package CBOR.Decoding is
                                     >= Data'First
                                   and then
                                     Decode'Result.Item.TS_Ref.First
-                                      <= Data'Last),
+                                      <= Data'Last
+                                  and then
+                                    Data'Last
+                                      - Decode'Result.Item.TS_Ref.First
+                                      >= Decode'Result.Item.TS_Ref.Length - 1),
                          when CBOR.MT_Byte_String =>
                             (if Decode'Result.Item.BS_Ref.Length > 0
                              then Decode'Result.Item.BS_Ref.First
                                     >= Data'First
                                   and then
                                     Decode'Result.Item.BS_Ref.First
-                                      <= Data'Last),
+                                      <= Data'Last
+                                  and then
+                                    Data'Last
+                                      - Decode'Result.Item.BS_Ref.First
+                                      >= Decode'Result.Item.BS_Ref.Length - 1),
+                         when CBOR.MT_Simple_Value =>
+                            (if Decode'Result.Item.Float_Ref.Length > 0
+                             then Decode'Result.Item.Float_Ref.First
+                                    >= Data'First
+                                  and then
+                                    Decode'Result.Item.Float_Ref.First
+                                      <= Data'Last
+                                  and then
+                                    Data'Last
+                                      - Decode'Result.Item.Float_Ref.First
+                                      >= Decode'Result.Item.Float_Ref.Length - 1),
                          when others => True));
 
    --  Return the head size in bytes for a given additional info.
@@ -70,17 +91,18 @@ package CBOR.Decoding is
      with Post => Head_Size'Result in 1 | 2 | 3 | 5 | 9;
 
    --  Extract byte/text string content from Data using a String_Ref.
-   --  Returns a new array with bounds 1 .. Ref.Length.
+   --  Returns a new array with bounds 1 .. Ref.Length (empty if Length = 0).
    function Get_String
      (Data : Ada.Streams.Stream_Element_Array;
       Ref  : String_Ref)
       return Ada.Streams.Stream_Element_Array
       with Pre => Data'First >= 0
                   and then Data'Last <= Max_Data_Length
-                  and then Ref.Length > 0
-                 and then Ref.First >= Data'First
-                 and then Ref.First <= Data'Last
-                 and then Data'Last - Ref.First >= Ref.Length - 1;
+                  and then (if Ref.Length > 0 then
+                             Ref.First >= Data'First
+                             and then Ref.First <= Data'Last
+                             and then Data'Last - Ref.First
+                                        >= Ref.Length - 1);
 
    --  Decode a complete CBOR data item tree with nested items.
    --  Uses an iterative stack (max depth = Max_Nesting_Depth).

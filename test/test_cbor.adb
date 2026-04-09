@@ -284,8 +284,8 @@ procedure Test_Cbor is
       end;
 
       R_Break := Dec.Decode (Enc.Encode_Break);
-      Check ("break sv", 31,
-             UInt64 (R_Break.Item.SV_Value));
+      Check_Status ("break rejected",
+                    CBOR.Err_Not_Well_Formed, R_Break.Status);
 
       R_ArrSt := Dec.Decode (Enc.Encode_Array_Start);
       Check ("arr_start count",
@@ -652,6 +652,116 @@ procedure Test_Cbor is
                     CBOR.Err_Truncated, R.Status);
    end Test_Truncated_Nested;
 
+   procedure Test_Float_Decode is
+      Half_Input : constant Stream_Element_Array :=
+        [16#F9#, 16#3C#, 16#00#];
+      R_Half : constant CBOR.Decode_Result :=
+        Dec.Decode (Half_Input);
+      Half_Bytes : constant Stream_Element_Array :=
+        Dec.Get_String (Half_Input, R_Half.Item.Float_Ref);
+
+      Single_Input : constant Stream_Element_Array :=
+        [16#FA#, 16#3F#, 16#80#, 16#00#, 16#00#];
+      R_Single : constant CBOR.Decode_Result :=
+        Dec.Decode (Single_Input);
+      Single_Bytes : constant Stream_Element_Array :=
+        Dec.Get_String (Single_Input, R_Single.Item.Float_Ref);
+
+      Double_Input : constant Stream_Element_Array :=
+        [16#FB#, 16#3F#, 16#F0#, 16#00#, 16#00#,
+         16#00#, 16#00#, 16#00#, 16#00#];
+      R_Double : constant CBOR.Decode_Result :=
+        Dec.Decode (Double_Input);
+      Double_Bytes : constant Stream_Element_Array :=
+        Dec.Get_String (Double_Input, R_Double.Item.Float_Ref);
+   begin
+      TIO.Put_Line ("  Float decode:");
+      Check_Status ("half status", CBOR.OK, R_Half.Status);
+      Check_Kind ("half kind",
+                  CBOR.MT_Simple_Value, R_Half.Item.Kind);
+      Check ("half sv", 25, UInt64 (R_Half.Item.SV_Value));
+      Check ("half ref len", 2,
+             UInt64 (R_Half.Item.Float_Ref.Length));
+      Check ("half byte1", 16#3C#, UInt64 (Half_Bytes (1)));
+      Check ("half byte2", 16#00#, UInt64 (Half_Bytes (2)));
+
+      Check_Status ("single status", CBOR.OK, R_Single.Status);
+      Check ("single sv", 26, UInt64 (R_Single.Item.SV_Value));
+      Check ("single ref len", 4,
+             UInt64 (R_Single.Item.Float_Ref.Length));
+      Check ("single byte1", 16#3F#, UInt64 (Single_Bytes (1)));
+      Check ("single byte4", 16#00#, UInt64 (Single_Bytes (4)));
+
+      Check_Status ("double status", CBOR.OK, R_Double.Status);
+      Check ("double sv", 27, UInt64 (R_Double.Item.SV_Value));
+      Check ("double ref len", 8,
+             UInt64 (R_Double.Item.Float_Ref.Length));
+      Check ("double byte1", 16#3F#, UInt64 (Double_Bytes (1)));
+      Check ("double byte8", 16#00#, UInt64 (Double_Bytes (8)));
+   end Test_Float_Decode;
+
+   procedure Test_Top_Level_Break is
+      E : constant Stream_Element_Array := [16#FF#];
+      R_Dec : constant CBOR.Decode_Result :=
+        Dec.Decode (E);
+      R_All : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E);
+   begin
+      TIO.Put_Line ("  Top-level break:");
+      Check_Status ("toplevel break dec",
+                    CBOR.Err_Not_Well_Formed, R_Dec.Status);
+      Check_Status ("toplevel break all",
+                    CBOR.Err_Not_Well_Formed, R_All.Status);
+   end Test_Top_Level_Break;
+
+   procedure Test_Empty_Strings is
+      BS_Empty : constant Stream_Element_Array := [16#40#];
+      R_BS : constant CBOR.Decode_Result :=
+        Dec.Decode (BS_Empty);
+      TS_Empty : constant Stream_Element_Array := [16#60#];
+      R_TS : constant CBOR.Decode_Result :=
+        Dec.Decode (TS_Empty);
+   begin
+      TIO.Put_Line ("  Empty strings:");
+      Check_Status ("empty bs status", CBOR.OK, R_BS.Status);
+      Check_Kind ("empty bs kind",
+                  CBOR.MT_Byte_String, R_BS.Item.Kind);
+      Check ("empty bs len", 0,
+             UInt64 (R_BS.Item.BS_Ref.Length));
+
+      Check_Status ("empty ts status", CBOR.OK, R_TS.Status);
+      Check_Kind ("empty ts kind",
+                  CBOR.MT_Text_String, R_TS.Item.Kind);
+      Check ("empty ts len", 0,
+             UInt64 (R_TS.Item.TS_Ref.Length));
+
+      declare
+         Empty_Bytes : constant Stream_Element_Array :=
+           Dec.Get_String (BS_Empty, R_BS.Item.BS_Ref);
+      begin
+         Check ("empty get len", 0,
+                UInt64 (Empty_Bytes'Length));
+      end;
+   end Test_Empty_Strings;
+
+   procedure Test_Decode_Indefinite_Steps is
+      E : constant Stream_Element_Array :=
+        Enc.Encode_Array_Start
+        & Enc.Encode_Unsigned (1)
+        & Enc.Encode_Break;
+      R1 : constant CBOR.Decode_Result := Dec.Decode (E);
+      R2 : constant CBOR.Decode_Result := Dec.Decode (E, R1.Offset + 1);
+      R3 : constant CBOR.Decode_Result := Dec.Decode (E, R2.Offset + 1);
+   begin
+      TIO.Put_Line ("  Decode indefinite by steps:");
+      Check_Status ("step arr status", CBOR.OK, R1.Status);
+      Check_Kind ("step arr kind", CBOR.MT_Array, R1.Item.Kind);
+      Check_Status ("step elem status", CBOR.OK, R2.Status);
+      Check ("step elem value", 1, R2.Item.UInt_Value);
+      Check_Status ("step break status", CBOR.OK, R3.Status);
+      Check ("step break sv", 31, UInt64 (R3.Item.SV_Value));
+   end Test_Decode_Indefinite_Steps;
+
 begin
    TIO.Put_Line ("=== CBOR Ada Test Suite ===");
    TIO.New_Line;
@@ -680,6 +790,10 @@ begin
    Test_Break_In_Definite;
    Test_Indef_Map_Odd;
    Test_Truncated_Nested;
+   Test_Float_Decode;
+   Test_Top_Level_Break;
+   Test_Empty_Strings;
+   Test_Decode_Indefinite_Steps;
 
    TIO.New_Line;
    TIO.Put_Line ("=== Results ===");

@@ -29,10 +29,12 @@ with Interfaces;
 package CBOR is
 
    pragma Pure;
+   pragma SPARK_Mode;
 
    package SE renames Ada.Streams;
    subtype Byte is SE.Stream_Element;
    subtype SE_Offset is SE.Stream_Element_Offset;
+   subtype SE_Length is SE_Offset range 0 .. SE_Offset'Last;
 
    --  CBOR major types (RFC 8949 Section 3.1)
    type Major_Type is
@@ -81,7 +83,7 @@ package CBOR is
    --  Use CBOR.Decoding.Get_String to extract the actual bytes.
    type String_Ref is record
       First  : SE_Offset;
-      Length : SE_Offset;
+      Length : SE_Length;
    end record;
 
    Null_Ref : constant String_Ref :=
@@ -101,7 +103,10 @@ package CBOR is
    --    MT_Array            => Arr_Count (UInt64'Last = indefinite)
    --    MT_Map              => Map_Count (UInt64'Last = indefinite)
    --    MT_Tag              => Tag_Number (0 .. 2^64-1)
-   --    MT_Simple_Value     => SV_Value (0..23, 31, 32..255)
+   --    MT_Simple_Value     => SV_Value (0..23, 32..255)
+   --                          Float_Ref for AI 25/26/27 (half/single/double)
+   --                          SV_Value=31 means break (from Decode_All or
+   --                          Decode at a non-initial offset)
    type CBOR_Item (Kind : Major_Type := MT_Unsigned_Integer) is record
       Head_Start : SE_Offset := 1;
       Head_End   : SE_Offset := 1;
@@ -121,7 +126,8 @@ package CBOR is
          when MT_Tag =>
             Tag_Number : UInt64 := 0;
          when MT_Simple_Value =>
-            SV_Value : Interfaces.Unsigned_8 := 0;
+            SV_Value  : Interfaces.Unsigned_8 := 0;
+            Float_Ref : String_Ref := Null_Ref;
       end case;
    end record;
 
