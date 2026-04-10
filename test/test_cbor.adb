@@ -1372,6 +1372,51 @@ procedure Test_Cbor is
       end;
    end Test_Max_Depth_Parameter;
 
+   procedure Test_Indef_String_Cumul_Len is
+      --  Indefinite byte string: 0x5F + two 3-byte chunks + break
+      --  Each chunk is 3 bytes (within a limit of 5), but cumulative
+      --  is 6 bytes (exceeds limit of 5).
+      Indef_BS : constant Stream_Element_Array :=
+        [16#5F#,                              --  indefinite byte string
+         16#43#, 16#01#, 16#02#, 16#03#,      --  chunk: 3 bytes
+         16#43#, 16#04#, 16#05#, 16#06#,      --  chunk: 3 bytes
+         16#FF#];                              --  break
+      --  Limit 5: each chunk (3) passes individually but cumulative
+      --  (6) should fail
+      R_Fail : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Indef_BS, Max_String_Len => 5);
+      --  Limit 6: cumulative exactly at limit, should pass
+      R_OK : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Indef_BS, Max_String_Len => 6);
+      --  Limit 100: well above, should pass
+      R_OK2 : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Indef_BS, Max_String_Len => 100);
+      --  Same for indefinite text string
+      Indef_TS : constant Stream_Element_Array :=
+        [16#7F#,                              --  indefinite text string
+         16#63#, 16#61#, 16#62#, 16#63#,      --  chunk: "abc" (3 bytes)
+         16#62#, 16#64#, 16#65#,              --  chunk: "de" (2 bytes)
+         16#FF#];                              --  break
+      --  Limit 4: cumulative 5 exceeds limit
+      R_TS_Fail : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Indef_TS, Max_String_Len => 4);
+      --  Limit 5: cumulative exactly at limit
+      R_TS_OK : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Indef_TS, Max_String_Len => 5);
+   begin
+      TIO.Put_Line ("  Indefinite string cumulative length:");
+      Check_Status ("indef bs cumul fail",
+                    CBOR.Err_String_Too_Long, R_Fail.Status);
+      Check_Status ("indef bs cumul ok",
+                    CBOR.OK, R_OK.Status);
+      Check_Status ("indef bs cumul ok2",
+                    CBOR.OK, R_OK2.Status);
+      Check_Status ("indef ts cumul fail",
+                    CBOR.Err_String_Too_Long, R_TS_Fail.Status);
+      Check_Status ("indef ts cumul ok",
+                    CBOR.OK, R_TS_OK.Status);
+   end Test_Indef_String_Cumul_Len;
+
    procedure Test_Max_String_Length is
       --  A 5-byte text string
       E : constant Stream_Element_Array :=
@@ -1468,6 +1513,7 @@ begin
    Test_Round_Trip_Floats;
    Test_Round_Trip_Containers;
 
+   Test_Indef_String_Cumul_Len;
    Test_Too_Many_Items;
    Test_Nested_Indefinite;
    Test_Decode_Pos_Edge;

@@ -54,11 +54,13 @@ package CBOR.Decoding is
      with Ghost,
           Pre => Data'First >= 0 and then Data'Last <= Max_Data_Length;
 
-   --  Decode a single CBOR data item starting at Data'First.
+   --  Decode a single CBOR data item header starting at Data'First.
+   --  For containers (arrays, maps, tags, indefinite-length strings),
+   --  only the header is decoded — child items are NOT validated.
+   --  Use Decode_All for full tree validation of untrusted input.
    --  Result.Next is the first unconsumed byte position
    --  (Data'Last + 1 when the entire buffer is consumed).
-   --  Standalone break (0xFF) is rejected as Err_Not_Well_Formed;
-   --  use Decode_All for indefinite-length containers.
+   --  Standalone break (0xFF) is rejected as Err_Not_Well_Formed.
    function Decode
      (Data : Ada.Streams.Stream_Element_Array)
       return Decode_Result
@@ -78,8 +80,9 @@ package CBOR.Decoding is
                       and then Valid_Item_Refs
                                  (Data, Decode'Result.Item));
 
-   --  Decode a single CBOR data item starting at Pos.
-   --  Pos must be a valid index in Data'Range.
+   --  Decode a single CBOR data item header starting at Pos.
+   --  Same semantics as Decode (Data) — header only, no child
+   --  validation.  Pos must be a valid index in Data'Range.
    function Decode
      (Data : Ada.Streams.Stream_Element_Array;
       Pos  : Ada.Streams.Stream_Element_Offset)
@@ -126,6 +129,8 @@ package CBOR.Decoding is
    --  Returns Err_Too_Many_Items if the tree exceeds Max_Decode_Items.
    --  Max_String_Len limits byte/text string lengths; returns
    --  Err_String_Too_Long if exceeded (default: no limit).
+   --  For indefinite-length strings, the cumulative chunk length
+   --  is tracked and also checked against Max_String_Len.
    function Decode_All
      (Data           : Ada.Streams.Stream_Element_Array;
       Check_UTF8     : Boolean := False;

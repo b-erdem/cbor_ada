@@ -659,6 +659,10 @@ package body CBOR.Decoding is
              Max_Depth);
 
        Stack : array (1 .. Max_Nesting_Depth) of Stack_Entry;
+       --  Cumulative byte count for indefinite string chunks at each
+       --  nesting level.  Tracked separately to avoid proof issues.
+       Indef_Str_Len : array (1 .. Max_Nesting_Depth)
+         of Ada.Streams.Stream_Element_Offset := [others => 0];
        Depth : Depth_Count := 0;
 
        Result : Decode_All_Result;
@@ -933,6 +937,45 @@ package body CBOR.Decoding is
                Result.Status := Err_String_Too_Long;
                Result.Next := Pos;
                return Result;
+            end if;
+
+            --  Track cumulative length for indefinite-length
+            --  byte/text string chunks.
+            if Depth in Indef_Str_Len'Range
+              and then Stack (Depth).Kind = CK_Indefinite
+              and then (Stack (Depth).Parent_MT = CBOR.MT_Byte_String
+                        or else
+                        Stack (Depth).Parent_MT = CBOR.MT_Text_String)
+            then
+               declare
+                  Chunk_Len :
+                    constant Ada.Streams.Stream_Element_Offset :=
+                    (if R.Item.Kind = CBOR.MT_Byte_String then
+                        R.Item.BS_Ref.Length
+                     elsif R.Item.Kind = CBOR.MT_Text_String then
+                        R.Item.TS_Ref.Length
+                     else
+                        0);
+               begin
+                  if Indef_Str_Len (Depth) < 0
+                    or else Indef_Str_Len (Depth) > Max_String_Len
+                  then
+                     Result.Status := Err_String_Too_Long;
+                     Result.Next := Pos;
+                     return Result;
+                  end if;
+                  --  Now 0 <= Indef_Str_Len (Depth) <= Max_String_Len,
+                  --  so the subtraction stays in range.
+                  if Chunk_Len >
+                    Max_String_Len - Indef_Str_Len (Depth)
+                  then
+                     Result.Status := Err_String_Too_Long;
+                     Result.Next := Pos;
+                     return Result;
+                  end if;
+                  Indef_Str_Len (Depth) :=
+                    Indef_Str_Len (Depth) + Chunk_Len;
+               end;
             end if;
 
             if Result.Count = Max_Decode_Items then

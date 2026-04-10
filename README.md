@@ -6,7 +6,7 @@ The encoder and decoder are **100% SPARK-proved** at Level 2 — mathematically 
 
 ## Key properties
 
-- **Formally verified** — 475 proof obligations, 0 unproved (CVC5/Z3)
+- **Formally verified** — 486 proof obligations, 0 unproved (CVC5/Z3)
 - **RFC 8949 compliant** — full well-formedness validation with shortest-form checking
 - **No heap allocation** — stack-only, suitable for embedded and safety-critical systems
 - **Stateless** — `pragma Pure`, no global state, no side effects
@@ -152,14 +152,14 @@ The decoder enforces all RFC 8949 well-formedness requirements:
 
 ```
 SPARK Analysis results   Total   Flow   Provers   Unproved
-Run-time Checks            310      .       310          .
+Run-time Checks            322      .       322          .
 Assertions                  68      .        68          .
 Functional Contracts        46      .        46          .
-Termination                 46     43         3          .
-Total                      475     48       427          .
+Termination                 44     41         3          .
+Total                      486     47       439          .
 ```
 
-All 475 checks proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
+All 486 checks proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
 
 ### Running proofs locally
 

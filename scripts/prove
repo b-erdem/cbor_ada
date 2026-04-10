@@ -17,12 +17,21 @@ set -e
 cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
 
+CLEANUP=0
+
+cleanup() {
+    if [ "$CLEANUP" = 1 ]; then
+        echo ""
+        echo "Removing temporary gnatprove dependency..."
+        alr with --del gnatprove
+    fi
+}
+trap cleanup EXIT
+
 if ! alr exec -- gnatprove --version > /dev/null 2>&1; then
     echo "gnatprove not found, adding temporarily..."
     alr with gnatprove
     CLEANUP=1
-else
-    CLEANUP=0
 fi
 
 LEVEL="${1:-2}"
@@ -58,8 +67,3 @@ if [ -f obj/gnatprove/gnatprove.out ]; then
     grep "Total " obj/gnatprove/gnatprove.out || true
 fi
 
-if [ "$CLEANUP" = 1 ]; then
-    echo ""
-    echo "Removing temporary gnatprove dependency..."
-    alr with --del gnatprove
-fi
