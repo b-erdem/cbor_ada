@@ -2,6 +2,7 @@ with CBOR;
 with CBOR.Encoding;
 with CBOR.Decoding;
 with Ada.Streams;
+with Ada.Numerics.Discrete_Random;
 with Ada.Text_IO;
 with GNAT.OS_Lib;
 with Interfaces;
@@ -767,7 +768,343 @@ procedure Test_Cbor is
                     CBOR.OK, R_Permissive.Status);
    end Test_Decode_All_Strict;
 
+   package Rand_U64 is new Ada.Numerics.Discrete_Random
+     (CBOR.UInt64);
+
+   Gen : Rand_U64.Generator;
+
+   procedure Test_Round_Trip_Unsigned is
+      Edge : constant array (1 .. 11) of UInt64 :=
+        [0, 1, 23, 24, 255, 256, 65535, 65536,
+         16#FFFF_FFFF#, 16#1_0000_0000#, UInt64'Last];
+   begin
+      TIO.Put_Line ("  Round-trip unsigned:");
+      for I in Edge'Range loop
+         declare
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Unsigned (Edge (I));
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check_Status ("rt_u status" & I'Image,
+                          CBOR.OK, R.Status);
+            Check_Kind ("rt_u kind" & I'Image,
+                        CBOR.MT_Unsigned_Integer, R.Item.Kind);
+            Check ("rt_u value" & I'Image,
+                   Edge (I), R.Item.UInt_Value);
+         end;
+      end loop;
+      for I in 1 .. 20 loop
+         declare
+            V : constant UInt64 := Rand_U64.Random (Gen);
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Unsigned (V);
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check ("rt_u rand" & I'Image, V, R.Item.UInt_Value);
+         end;
+      end loop;
+   end Test_Round_Trip_Unsigned;
+
+   procedure Test_Round_Trip_Negative is
+      Edge : constant array (1 .. 11) of UInt64 :=
+        [0, 1, 23, 24, 255, 256, 65535, 65536,
+         16#FFFF_FFFF#, 16#1_0000_0000#, UInt64'Last];
+   begin
+      TIO.Put_Line ("  Round-trip negative:");
+      for I in Edge'Range loop
+         declare
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Negative (Edge (I));
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check_Status ("rt_n status" & I'Image,
+                          CBOR.OK, R.Status);
+            Check_Kind ("rt_n kind" & I'Image,
+                        CBOR.MT_Negative_Integer, R.Item.Kind);
+            Check ("rt_n arg" & I'Image,
+                   Edge (I), R.Item.NInt_Arg);
+         end;
+      end loop;
+      for I in 1 .. 20 loop
+         declare
+            V : constant UInt64 := Rand_U64.Random (Gen);
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Negative (V);
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check ("rt_n rand" & I'Image, V, R.Item.NInt_Arg);
+         end;
+      end loop;
+   end Test_Round_Trip_Negative;
+
+   procedure Test_Round_Trip_Simple_Types is
+   begin
+      TIO.Put_Line ("  Round-trip simple types:");
+      declare
+         Rt : constant Stream_Element_Array :=
+           Enc.Encode_Bool (True);
+         Rf : constant Stream_Element_Array :=
+           Enc.Encode_Bool (False);
+         DT : constant CBOR.Decode_Result := Dec.Decode (Rt);
+         DF : constant CBOR.Decode_Result := Dec.Decode (Rf);
+      begin
+         Check ("rt_bool true sv", 21,
+                UInt64 (DT.Item.SV_Value));
+         Check ("rt_bool false sv", 20,
+                UInt64 (DF.Item.SV_Value));
+      end;
+      declare
+         E : constant Stream_Element_Array := Enc.Encode_Null;
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+      begin
+         Check ("rt_null sv", 22,
+                UInt64 (R.Item.SV_Value));
+      end;
+      declare
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Undefined;
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+      begin
+         Check ("rt_undef sv", 23,
+                UInt64 (R.Item.SV_Value));
+      end;
+      for SV in 0 .. 23 loop
+         declare
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Simple (UInt64 (SV));
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check ("rt_simple" & SV'Image,
+                   UInt64 (SV), UInt64 (R.Item.SV_Value));
+         end;
+      end loop;
+      for SV in 32 .. 255 loop
+         declare
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Simple (UInt64 (SV));
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check ("rt_simple" & SV'Image,
+                   UInt64 (SV), UInt64 (R.Item.SV_Value));
+         end;
+      end loop;
+   end Test_Round_Trip_Simple_Types;
+
+   procedure Test_Round_Trip_Tag is
+      Edge : constant array (1 .. 8) of UInt64 :=
+        [0, 1, 23, 24, 255, 65535,
+         16#1_0000_0000#, UInt64'Last];
+   begin
+      TIO.Put_Line ("  Round-trip tag:");
+      for I in Edge'Range loop
+         declare
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Tag (Edge (I));
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check ("rt_tag" & I'Image,
+                   Edge (I), R.Item.Tag_Number);
+         end;
+      end loop;
+      for I in 1 .. 20 loop
+         declare
+            V : constant UInt64 := Rand_U64.Random (Gen);
+            E : constant Stream_Element_Array :=
+              Enc.Encode_Tag (V);
+            R : constant CBOR.Decode_Result :=
+              Dec.Decode (E);
+         begin
+            Check ("rt_tag rand" & I'Image, V, R.Item.Tag_Number);
+         end;
+      end loop;
+   end Test_Round_Trip_Tag;
+
+   procedure Test_Round_Trip_Strings is
+      Lengths : constant array (1 .. 5) of Stream_Element_Offset :=
+        [0, 1, 23, 24, 256];
+   begin
+      TIO.Put_Line ("  Round-trip strings:");
+      for J in Lengths'Range loop
+         declare
+            Len : constant Stream_Element_Offset := Lengths (J);
+            Raw : Stream_Element_Array (1 .. Len) :=
+              [others => 0];
+         begin
+            for I in 1 .. Len loop
+               Raw (I) := Stream_Element
+                 ((I * 37 + 13) mod 256);
+            end loop;
+            declare
+               E : constant Stream_Element_Array :=
+                 Enc.Encode_Byte_String (Raw);
+               R : constant CBOR.Decode_Result :=
+                 Dec.Decode (E);
+               D : constant Stream_Element_Array :=
+                 Dec.Get_String (E, R.Item.BS_Ref);
+            begin
+               Check ("rt_bs len" & Len'Image,
+                      UInt64 (R.Item.BS_Ref.Length),
+                      UInt64 (Len));
+               if Len > 0 then
+                  Check ("rt_bs first" & Len'Image,
+                         UInt64 (D (1)), UInt64 (Raw (1)));
+                  Check ("rt_bs last" & Len'Image,
+                         UInt64 (D (Len)), UInt64 (Raw (Len)));
+               end if;
+            end;
+         end;
+      end loop;
+      for J in Lengths'Range loop
+         declare
+            Len  : constant Stream_Element_Offset := Lengths (J);
+            Text : String (1 .. Integer (Len)) :=
+              [others => 'A'];
+         begin
+            for I in 1 .. Integer (Len) loop
+               Text (I) :=
+                 Character'Val ((I * 37 + 13) mod 95 + 32);
+            end loop;
+            declare
+               E : constant Stream_Element_Array :=
+                 Enc.Encode_Text_String (Text);
+               R : constant CBOR.Decode_Result :=
+                 Dec.Decode (E);
+               D : constant Stream_Element_Array :=
+                 Dec.Get_String (E, R.Item.TS_Ref);
+            begin
+               Check ("rt_ts len" & Len'Image,
+                      UInt64 (R.Item.TS_Ref.Length),
+                      UInt64 (Len));
+                if Len > 0 then
+                  Check ("rt_ts byte1" & Len'Image,
+                         UInt64 (D (1)),
+                         UInt64 (Character'Pos (Text (1))));
+                  Check ("rt_ts byteN" & Len'Image,
+                         UInt64 (D (Len)),
+                         UInt64 (Character'Pos
+                           (Text (Integer (Len)))));
+               end if;
+            end;
+         end;
+      end loop;
+   end Test_Round_Trip_Strings;
+
+   procedure Test_Round_Trip_Floats is
+   begin
+      TIO.Put_Line ("  Round-trip floats:");
+      declare
+         Half_In : constant Stream_Element_Array :=
+           [16#3C#, 16#00#];
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Float_Half (Half_In);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+         D : constant Stream_Element_Array :=
+           Dec.Get_String (E, R.Item.Float_Ref);
+      begin
+         Check ("rt_f16 sv", 25,
+                UInt64 (R.Item.SV_Value));
+         Check ("rt_f16 len", 2,
+                UInt64 (R.Item.Float_Ref.Length));
+         Check ("rt_f16 b1", 16#3C#, UInt64 (D (1)));
+         Check ("rt_f16 b2", 16#00#, UInt64 (D (2)));
+      end;
+      declare
+         Single_In : constant Stream_Element_Array :=
+           [16#3F#, 16#80#, 16#00#, 16#00#];
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Float_Single (Single_In);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+         D : constant Stream_Element_Array :=
+           Dec.Get_String (E, R.Item.Float_Ref);
+      begin
+         Check ("rt_f32 sv", 26,
+                UInt64 (R.Item.SV_Value));
+         Check ("rt_f32 len", 4,
+                UInt64 (R.Item.Float_Ref.Length));
+         Check ("rt_f32 b1", 16#3F#, UInt64 (D (1)));
+         Check ("rt_f32 b4", 16#00#, UInt64 (D (4)));
+      end;
+      declare
+         Double_In : constant Stream_Element_Array :=
+           [16#3F#, 16#F0#, 16#00#, 16#00#,
+            16#00#, 16#00#, 16#00#, 16#00#];
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Float_Double (Double_In);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+         D : constant Stream_Element_Array :=
+           Dec.Get_String (E, R.Item.Float_Ref);
+      begin
+         Check ("rt_f64 sv", 27,
+                UInt64 (R.Item.SV_Value));
+         Check ("rt_f64 len", 8,
+                UInt64 (R.Item.Float_Ref.Length));
+         Check ("rt_f64 b1", 16#3F#, UInt64 (D (1)));
+         Check ("rt_f64 b2", 16#F0#, UInt64 (D (2)));
+         Check ("rt_f64 b8", 16#00#, UInt64 (D (8)));
+      end;
+   end Test_Round_Trip_Floats;
+
+   procedure Test_Round_Trip_Containers is
+      Counts : constant array (1 .. 5) of UInt64 :=
+        [0, 1, 23, 24, 255];
+   begin
+      TIO.Put_Line ("  Round-trip containers:");
+      for J in Counts'Range loop
+         declare
+            Cnt : constant UInt64 := Counts (J);
+            EA  : constant Stream_Element_Array :=
+              Enc.Encode_Array (Cnt);
+            RA  : constant CBOR.Decode_Result :=
+              Dec.Decode (EA);
+            EM  : constant Stream_Element_Array :=
+              Enc.Encode_Map (Cnt);
+            RM  : constant CBOR.Decode_Result :=
+              Dec.Decode (EM);
+         begin
+            Check ("rt_arr" & J'Image & " cnt",
+                   Cnt, RA.Item.Arr_Count);
+            Check ("rt_map" & J'Image & " cnt",
+                   Cnt, RM.Item.Map_Count);
+         end;
+      end loop;
+      declare
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Array (3)
+           & Enc.Encode_Unsigned (1)
+           & Enc.Encode_Text_String ("hi")
+           & Enc.Encode_Bool (False);
+         R : constant CBOR.Decode_All_Result :=
+           Dec.Decode_All (E);
+      begin
+         Check_Status ("rt_struct status", CBOR.OK, R.Status);
+         Check ("rt_struct count", 4, UInt64 (R.Count));
+         Check_Kind ("rt_struct[1]",
+                     CBOR.MT_Array, R.Items (1).Kind);
+         Check ("rt_struct[1] cnt", 3, R.Items (1).Arr_Count);
+         Check_Kind ("rt_struct[2]",
+                     CBOR.MT_Unsigned_Integer,
+                     R.Items (2).Kind);
+         Check ("rt_struct[2] val", 1, R.Items (2).UInt_Value);
+         Check_Kind ("rt_struct[3]",
+                     CBOR.MT_Text_String,
+                     R.Items (3).Kind);
+         Check_Kind ("rt_struct[4]",
+                     CBOR.MT_Simple_Value,
+                     R.Items (4).Kind);
+         Check ("rt_struct[4] sv", 20,
+                UInt64 (R.Items (4).SV_Value));
+      end;
+   end Test_Round_Trip_Containers;
+
 begin
+   Rand_U64.Reset (Gen);
    TIO.Put_Line ("=== CBOR Ada Test Suite ===");
    TIO.New_Line;
 
@@ -799,6 +1136,14 @@ begin
    Test_Top_Level_Break;
    Test_Empty_Strings;
    Test_Decode_All_Strict;
+
+   Test_Round_Trip_Unsigned;
+   Test_Round_Trip_Negative;
+   Test_Round_Trip_Simple_Types;
+   Test_Round_Trip_Tag;
+   Test_Round_Trip_Strings;
+   Test_Round_Trip_Floats;
+   Test_Round_Trip_Containers;
 
    TIO.New_Line;
    TIO.Put_Line ("=== Results ===");

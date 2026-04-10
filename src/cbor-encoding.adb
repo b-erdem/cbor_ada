@@ -19,14 +19,14 @@ package body CBOR.Encoding is
      SE.Stream_Element_Offset (Max_Data_Length);
 
    function Make_Head
-     (MT  : CBOR.Major_Type;
-      Val : U8)
-      return SE.Stream_Element
+      (MT  : CBOR.Major_Type;
+       Val : U8)
+       return SE.Stream_Element
    is
-      MT_Bits : constant U8 :=
-        Shift_Left (CBOR.MT_To_U8 (MT), 5);
+       MT_Bits : constant U8 :=
+         Shift_Left (CBOR.MT_To_U8 (MT), 5);
    begin
-      return SE.Stream_Element (MT_Bits or Val);
+       return SE.Stream_Element (MT_Bits or Val);
    end Make_Head;
 
    function To_SE (V : U8) return SE.Stream_Element
