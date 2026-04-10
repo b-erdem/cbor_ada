@@ -142,7 +142,7 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 ## Dependencies
 
 - GNAT >= 15.1 (Ada 2022)
-- gnatprove >= 15.1 (bundled via Alire; only needed for SPARK proofs — consumers can `alr with --del gnatprove` if not needed)
+- gnatprove >= 15.1 (for SPARK proofs only — not a library dependency; developers run `alr with gnatprove` or `scripts/prove`)
 
 ## License
 

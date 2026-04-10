@@ -1,0 +1,31 @@
+#!/bin/bash
+# Run SPARK proofs on cbor_ada.
+# Requires gnatprove installed via Alire:
+#   alr with gnatprove
+# This script temporarily adds gnatprove as a dependency if not present.
+
+set -e
+cd "$(dirname "$0")"
+export PATH="$HOME/.local/bin:$PATH"
+
+if ! alr exec -- gnatprove --version > /dev/null 2>&1; then
+    echo "gnatprove not found, adding temporarily..."
+    alr with gnatprove
+    CLEANUP=1
+else
+    CLEANUP=0
+fi
+
+LEVEL="${1:-2}"
+TIMEOUT="${2:-120}"
+
+alr exec -- gnatprove -P cbor_ada.gpr -j0 --level="$LEVEL" --timeout="$TIMEOUT"
+
+echo ""
+grep "Total " obj/gnatprove/gnatprove.out
+
+if [ "$CLEANUP" = 1 ]; then
+    echo ""
+    echo "Removing temporary gnatprove dependency..."
+    alr with --del gnatprove
+fi

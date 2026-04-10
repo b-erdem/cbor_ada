@@ -28,8 +28,12 @@ alr exec -- gprbuild -P test_cbor.gpr -p
 # Run tests
 ./bin/test_cbor
 
-# Run SPARK proofs (level 1, 120s timeout)
-alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=1 --timeout=120
+# Run SPARK proofs (gnatprove is NOT a library dependency; add it first)
+alr with gnatprove
+alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=2 --timeout=120
+
+# Or use the convenience script (auto-adds/removes gnatprove)
+scripts/prove 2 120
 
 # Check proof summary
 grep "Total " obj/gnatprove/gnatprove.out
