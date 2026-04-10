@@ -33,7 +33,7 @@ Initial release.
   - Indefinite-length string chunk type matching
   - Indefinite-length map even-count enforcement
   - Truncated input detection
-- **SPARK formal verification** — 475 proof obligations, 0 unproved (Level 2)
+- **SPARK formal verification** — 486 proof obligations, 0 unproved (Level 2)
 - **Security controls** — configurable nesting depth, string length limits,
   optional UTF-8 validation
 - No heap allocation, `pragma Pure`, zero dependencies
