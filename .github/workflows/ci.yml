@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Alire
+        uses: alire-project/setup-alire@v3
+
+      - name: Build library
+        run: alr build
+
+      - name: Build tests
+        run: alr exec -- gprbuild -P test_cbor.gpr -p
+
+      - name: Run tests
+        run: ./bin/test_cbor
+
+  prove:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Alire
+        uses: alire-project/setup-alire@v3
+
+      - name: Add gnatprove
+        run: alr with gnatprove
+
+      - name: Run SPARK proofs
+        run: alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=2 --timeout=120
+
+      - name: Show proof summary
+        if: always()
+        run: |
+          if [ -f obj/gnatprove/gnatprove.out ]; then
+            grep "Total " obj/gnatprove/gnatprove.out || true
+          fi

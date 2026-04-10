@@ -1,10 +1,6 @@
 --  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
 --  SPDX-License-Identifier: Apache-2.0
 
-with CBOR.Encoding;
-with CBOR.Decoding;
-with Interfaces;
-
 package body CBOR.Properties is
 
    pragma SPARK_Mode;
@@ -15,8 +11,6 @@ package body CBOR.Properties is
 
    use type SE.Stream_Element;
    use type SE.Stream_Element_Offset;
-   use type CBOR.UInt64;
-   use type Interfaces.Unsigned_8;
 
    procedure Lemma_Round_Trip_Unsigned (Value : CBOR.UInt64) is
       Encoded : constant SE.Stream_Element_Array :=
@@ -79,7 +73,7 @@ package body CBOR.Properties is
 
    procedure Lemma_Round_Trip_Simple (Value : CBOR.UInt64) is
       Encoded : constant SE.Stream_Element_Array :=
-        Enc.Encode_Simple (Value);
+        Enc.Encode_Simple (Interfaces.Unsigned_8 (Value));
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin

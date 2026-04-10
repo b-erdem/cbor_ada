@@ -1,8 +1,6 @@
 --  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
 --  SPDX-License-Identifier: Apache-2.0
 
-with Interfaces;
-
 package body CBOR.Encoding is
 
    pragma SPARK_Mode;
@@ -194,6 +192,24 @@ package body CBOR.Encoding is
       return R;
    end Encode_Text_String;
 
+   function Encode_Text_String_UTF8
+     (Data : SE.Stream_Element_Array)
+      return SE.Stream_Element_Array
+   is
+      Header : constant SE.Stream_Element_Array :=
+        Encode_Head (CBOR.MT_Text_String, U64 (Data'Length));
+      HL : constant SE.Stream_Element_Offset :=
+        Header'Length;
+      DL : constant SE.Stream_Element_Offset :=
+        Data'Length;
+      R  : SE.Stream_Element_Array (1 .. HL + DL) :=
+        [others => 0];
+   begin
+      Append_All (R, Header, 1);
+      Append_All (R, Data, HL + 1);
+      return R;
+   end Encode_Text_String_UTF8;
+
    function Encode_Array
      (Count : CBOR.UInt64)
       return SE.Stream_Element_Array
@@ -219,7 +235,7 @@ package body CBOR.Encoding is
    end Encode_Tag;
 
    function Encode_Simple
-     (Value : CBOR.UInt64)
+     (Value : Interfaces.Unsigned_8)
       return SE.Stream_Element_Array
    is
       H : constant SE.Stream_Element :=
@@ -236,7 +252,7 @@ package body CBOR.Encoding is
          declare
             R : constant SE.Stream_Element_Array (1 .. 2) :=
               [1 => H + 24,
-               2 => To_SE (U8 (Value))];
+               2 => To_SE (Value)];
          begin
             return R;
          end;

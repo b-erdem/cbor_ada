@@ -1,4 +1,5 @@
 with "cbor_ada.gpr";
+with "config/cbor_ada_config.gpr";
 
 project Test_Cbor is
 
@@ -8,10 +9,15 @@ project Test_Cbor is
    for Exec_Dir use "bin";
 
    package Linker is
-      for Switches ("Ada") use
-        ("-L" & external ("SDKROOT",
-         "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
-         & "/usr/lib");
+      case Cbor_Ada_Config.Alire_Host_OS is
+         when "macos" =>
+            for Switches ("Ada") use
+              ("-L" & external ("SDKROOT",
+               "/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk")
+               & "/usr/lib");
+         when others =>
+            null;
+      end case;
    end Linker;
 
    package Compiler is

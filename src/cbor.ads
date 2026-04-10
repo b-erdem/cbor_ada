@@ -53,7 +53,9 @@ package CBOR is
          when MT_Simple_Value    => 7);
 
    --  SPARK-compatible conversion: 3-bit encoding to Major_Type
-   function U8_To_MT (Val : Interfaces.Unsigned_8) return Major_Type is
+   subtype MT_Encoding is Interfaces.Unsigned_8 range 0 .. 7;
+
+   function U8_To_MT (Val : MT_Encoding) return Major_Type is
      (case Val is
          when 0 => MT_Unsigned_Integer,
          when 1 => MT_Negative_Integer,
@@ -62,7 +64,7 @@ package CBOR is
          when 4 => MT_Array,
          when 5 => MT_Map,
          when 6 => MT_Tag,
-         when others => MT_Simple_Value);
+         when 7 => MT_Simple_Value);
 
    subtype UInt64 is Interfaces.Unsigned_64;
 
@@ -86,8 +88,10 @@ package CBOR is
    --  returns Err_Depth_Exceeded.
    Max_Nesting_Depth : constant := 16;
 
-   --  Decoded CBOR data item. Head_Start/Head_End give the
-   --  byte range in the source buffer. The variant fields
+   --  Decoded CBOR data item. Head_Start/Item_End give the
+   --  byte range in the source buffer. Item_End is the last
+   --  byte of the complete item (including string payload
+   --  for byte/text strings). The variant fields
    --  depend on Kind:
    --    MT_Unsigned_Integer => UInt_Value (0 .. 2^64-1)
    --    MT_Negative_Integer => NInt_Arg (value is -1 - NInt_Arg)
@@ -101,7 +105,7 @@ package CBOR is
    --                          SV_Value=31 means break (only from Decode_All)
    type CBOR_Item (Kind : Major_Type := MT_Unsigned_Integer) is record
       Head_Start : SE_Offset := 1;
-      Head_End   : SE_Offset := 1;
+      Item_End   : SE_Offset := 1;
       case Kind is
          when MT_Unsigned_Integer =>
             UInt_Value : UInt64 := 0;
@@ -127,9 +131,11 @@ package CBOR is
      (OK,
       Err_Not_Well_Formed,
       Err_Truncated,
+      Err_Trailing_Data,
       Err_Depth_Exceeded,
       Err_Invalid_UTF8,
-      Err_Too_Many_Items);
+      Err_Too_Many_Items,
+      Err_String_Too_Long);
 
    --  Result of single-item Decode. Offset points to the last byte
    --  consumed. On error, Item has default values.

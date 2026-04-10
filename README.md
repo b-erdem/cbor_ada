@@ -11,6 +11,8 @@ CBOR (RFC 8949) encoding/decoding library for Ada/SPARK with formal verification
 - **All major types** — unsigned/negative integers, byte/text strings, arrays, maps, tags, simple values, floats (opaque), break, indefinite-length starts
 - **No heap allocation** — stack-only, suitable for embedded/constrained environments
 - **`pragma Pure`** — stateless, no side effects
+- **Configurable string length limit** — `Max_String_Len` parameter for DoS protection on untrusted input
+- **Round-trip property lemmas** — SPARK ghost proofs that `Decode(Encode(V)) = V`
 
 ## Installation
 
@@ -32,8 +34,11 @@ Bytes := Encode_Unsigned (42);
 --  Negative integer (-1 - Arg)
 Bytes := Encode_Negative (9);  --  encodes -10
 
---  Text string (caller must ensure valid UTF-8)
+--  Text string (Latin-1 bytes; caller ensures valid content)
 Bytes := Encode_Text_String ("hello");
+
+--  Text string from raw UTF-8 bytes (preferred for UTF-8 content)
+Bytes := Encode_Text_String_UTF8 (UTF8_Bytes);
 
 --  Byte string
 Bytes := Encode_Byte_String (Raw_Bytes);
@@ -102,6 +107,12 @@ R : Decode_All_Result := Decoding.Decode_All (Input_Bytes);
 --  With UTF-8 validation
 R := Decoding.Decode_All (Input_Bytes, Check_UTF8 => True);
 
+--  With string length limit (DoS protection for untrusted input)
+R := Decoding.Decode_All (Input_Bytes, Max_String_Len => 4096);
+
+--  Strict mode: reject trailing bytes
+R := Decoding.Decode_All_Strict (Input_Bytes);
+
 --  Manual nested decode (walk with Decode + Offset)
 R1 := Decoding.Decode (Data);
 R2 := Decoding.Decode (Data, R1.Offset + 1);
@@ -122,27 +133,42 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 - Odd item count in indefinite-length maps at break
 - Nesting depth exceeding 16
 
+## Error codes
+
+| Status | Meaning |
+|--------|---------|
+| `OK` | Successful decode |
+| `Err_Not_Well_Formed` | RFC 8949 well-formedness violation |
+| `Err_Truncated` | Input cut short (incomplete item) |
+| `Err_Trailing_Data` | Extra bytes after top-level item (strict mode) |
+| `Err_Depth_Exceeded` | Nesting depth > `Max_Nesting_Depth` (16) |
+| `Err_Invalid_UTF8` | Invalid UTF-8 in text string (when `Check_UTF8 => True`) |
+| `Err_Too_Many_Items` | Item tree exceeds `Max_Decode_Items` (128) |
+| `Err_String_Too_Long` | String length exceeds `Max_String_Len` parameter |
+
 ## SPARK proof status
 
 | Component    | Proved | Notes |
 |-------------|--------|-------|
 | Encoder     | 100%   | Proved at Level 2 |
 | Decoder     | 100%   | Proved at Level 1 and Level 2 |
-| **Total**   | **100%** | **413/413 checks proved, 0 unproved** |
+| Properties  | Ghost  | Round-trip lemmas with postconditions |
+| **Total**   | **100%** | **0 unproved checks** |
 
 ## Limitations
 
 - Float values are encoded/decoded as opaque byte arrays (no IEEE 754 conversion)
-- No half-precision float conversion utility (Layer 2, not yet implemented)
+- No half-precision float conversion utility
 - UTF-8 validation is opt-in via `Check_UTF8` parameter
+- `Encode_Text_String` serializes raw Character'Pos bytes (Latin-1); use `Encode_Text_String_UTF8` for pre-encoded UTF-8
 - `Decode_All` returns at most 128 items (`Max_Decode_Items`)
-- `Encode_Text_String` serializes raw Character'Pos bytes (Latin-1); for UTF-8, pass pre-encoded bytes or ensure ASCII-only content (caller responsibility)
-- `Decode_All` accepts trailing bytes after the top-level item; use `Decode_All_Strict` to reject them
+- Tag semantics (e.g., tag 0 date validation) are not enforced
+- `Decode_All` accepts trailing bytes; use `Decode_All_Strict` to reject them
 
 ## Dependencies
 
 - GNAT >= 15.1 (Ada 2022)
-- gnatprove >= 15.1 (for SPARK proofs only — not a library dependency; developers run `alr with gnatprove` or `scripts/prove`)
+- gnatprove >= 15.1 (for SPARK proofs only — not a library dependency)
 
 ## License
 

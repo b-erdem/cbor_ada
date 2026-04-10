@@ -763,7 +763,7 @@ procedure Test_Cbor is
       Check ("strict exact count", 1,
              UInt64 (R_Exact.Count));
       Check_Status ("strict trailing",
-                    CBOR.Err_Truncated, R_Trailing.Status);
+                    CBOR.Err_Trailing_Data, R_Trailing.Status);
       Check_Status ("permissive trailing",
                     CBOR.OK, R_Permissive.Status);
    end Test_Decode_All_Strict;
@@ -875,7 +875,7 @@ procedure Test_Cbor is
       for SV in 0 .. 23 loop
          declare
             E : constant Stream_Element_Array :=
-              Enc.Encode_Simple (UInt64 (SV));
+              Enc.Encode_Simple (Unsigned_8 (SV));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
          begin
@@ -886,7 +886,7 @@ procedure Test_Cbor is
       for SV in 32 .. 255 loop
          declare
             E : constant Stream_Element_Array :=
-              Enc.Encode_Simple (UInt64 (SV));
+              Enc.Encode_Simple (Unsigned_8 (SV));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
          begin
@@ -1103,6 +1103,216 @@ procedure Test_Cbor is
       end;
    end Test_Round_Trip_Containers;
 
+   procedure Test_Too_Many_Items is
+      --  Build an array of 128 unsigned integers (hitting Max_Decode_Items)
+      Hdr : constant Stream_Element_Array :=
+        Enc.Encode_Array (128);
+      Buf : Stream_Element_Array (1 .. Hdr'Length + 128) :=
+        [others => 0];
+      Pos : Stream_Element_Offset := 1;
+      R128 : CBOR.Decode_All_Result;
+   begin
+      TIO.Put_Line ("  Too many items:");
+      --  Fill buf with header + 128 x encode_unsigned(0) = 128 x 0x00
+      for I in Hdr'Range loop
+         Buf (Pos) := Hdr (I);
+         Pos := Pos + 1;
+      end loop;
+      --  Each Encode_Unsigned(0) is a single byte 0x00
+      --  Already filled with zeros, so done.
+      R128 := Dec.Decode_All (Buf);
+      --  Array header (1 item) + 128 elements = 129 total items
+      --  This exceeds Max_Decode_Items = 128
+      Check_Status ("128 elems",
+                    CBOR.Err_Too_Many_Items, R128.Status);
+
+      --  Verify that 127 elements (128 total items) works
+      declare
+         Hdr3 : constant Stream_Element_Array :=
+           Enc.Encode_Array (127);
+         Buf3 : Stream_Element_Array
+           (1 .. Hdr3'Length + 127) := [others => 0];
+         P3 : Stream_Element_Offset := 1;
+         R127 : CBOR.Decode_All_Result;
+      begin
+         for I in Hdr3'Range loop
+            Buf3 (P3) := Hdr3 (I);
+            P3 := P3 + 1;
+         end loop;
+         R127 := Dec.Decode_All (Buf3);
+         Check_Status ("127 elems ok",
+                       CBOR.OK, R127.Status);
+         Check ("127 elems count", 128,
+                UInt64 (R127.Count));
+      end;
+   end Test_Too_Many_Items;
+
+   procedure Test_Nested_Indefinite is
+      --  Indefinite array containing indefinite map with one k-v pair
+      E : constant Stream_Element_Array :=
+        Enc.Encode_Array_Start            -- 0x9F
+        & Enc.Encode_Map_Start            -- 0xBF
+        & Enc.Encode_Unsigned (1)         -- key
+        & Enc.Encode_Unsigned (2)         -- value
+        & Enc.Encode_Break                -- close map
+        & Enc.Encode_Break;               -- close array
+      R : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E);
+   begin
+      TIO.Put_Line ("  Nested indefinite:");
+      Check_Status ("nested indef status",
+                    CBOR.OK, R.Status);
+      Check ("nested indef count", 6,
+             UInt64 (R.Count));
+      Check_Kind ("ni[0]",
+                  CBOR.MT_Array, R.Items (1).Kind);
+      Check ("ni[0] cnt",
+             UInt64'Last, R.Items (1).Arr_Count);
+      Check_Kind ("ni[1]",
+                  CBOR.MT_Map, R.Items (2).Kind);
+      Check ("ni[1] cnt",
+             UInt64'Last, R.Items (2).Map_Count);
+      Check ("ni[2] val", 1, R.Items (3).UInt_Value);
+      Check ("ni[3] val", 2, R.Items (4).UInt_Value);
+      --  Break items
+      Check ("ni[4] sv", 31,
+             UInt64 (R.Items (5).SV_Value));
+      Check ("ni[5] sv", 31,
+             UInt64 (R.Items (6).SV_Value));
+   end Test_Nested_Indefinite;
+
+   procedure Test_Decode_Pos_Edge is
+      --  Two single-byte items: [10, 5], decode second via Pos
+      E : constant Stream_Element_Array :=
+        Enc.Encode_Unsigned (10)
+        & Enc.Encode_Unsigned (5);
+      R1 : constant CBOR.Decode_Result := Dec.Decode (E);
+      R2 : CBOR.Decode_Result;
+      R3 : CBOR.Decode_Result;
+   begin
+      TIO.Put_Line ("  Decode Pos edge cases:");
+      Check_Status ("pos edge r1", CBOR.OK, R1.Status);
+      Check ("pos edge r1 val", 10, R1.Item.UInt_Value);
+      R2 := Dec.Decode (E, R1.Offset + 1);
+      Check_Status ("pos edge r2", CBOR.OK, R2.Status);
+      Check ("pos edge r2 val", 5, R2.Item.UInt_Value);
+      --  Decode at exactly Data'Last (single-byte item 0x05)
+      R3 := Dec.Decode (E, E'Last);
+      Check_Status ("pos at last", CBOR.OK, R3.Status);
+      Check ("pos at last val", 5, R3.Item.UInt_Value);
+   end Test_Decode_Pos_Edge;
+
+   procedure Test_Indef_String_Success is
+      --  Indefinite byte string with two chunks, decoded successfully
+      BS : constant Stream_Element_Array :=
+        [16#5F#,                           -- indef byte string start
+         16#42#, 16#CA#, 16#FE#,           -- chunk: 2 bytes
+         16#43#, 16#DE#, 16#AD#, 16#00#,   -- chunk: 3 bytes
+         16#FF#];                           -- break
+      R : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (BS);
+   begin
+      TIO.Put_Line ("  Indef string success:");
+      Check_Status ("indef bs status", CBOR.OK, R.Status);
+      Check ("indef bs count", 4, UInt64 (R.Count));
+      Check_Kind ("ibs[0]",
+                  CBOR.MT_Byte_String, R.Items (1).Kind);
+      --  First chunk
+      Check_Kind ("ibs[1]",
+                  CBOR.MT_Byte_String, R.Items (2).Kind);
+      Check ("ibs[1] len", 2,
+             UInt64 (R.Items (2).BS_Ref.Length));
+      declare
+         C1 : constant Stream_Element_Array :=
+           Dec.Get_String (BS, R.Items (2).BS_Ref);
+      begin
+         Check ("ibs[1] b1", 16#CA#, UInt64 (C1 (1)));
+         Check ("ibs[1] b2", 16#FE#, UInt64 (C1 (2)));
+      end;
+      --  Second chunk
+      Check ("ibs[2] len", 3,
+             UInt64 (R.Items (3).BS_Ref.Length));
+      declare
+         C2 : constant Stream_Element_Array :=
+           Dec.Get_String (BS, R.Items (3).BS_Ref);
+      begin
+         Check ("ibs[2] b1", 16#DE#, UInt64 (C2 (1)));
+         Check ("ibs[2] b2", 16#AD#, UInt64 (C2 (2)));
+         Check ("ibs[2] b3", 16#00#, UInt64 (C2 (3)));
+      end;
+      --  Break
+      Check ("ibs[3] sv", 31,
+             UInt64 (R.Items (4).SV_Value));
+   end Test_Indef_String_Success;
+
+   procedure Test_TS_With_BS_Chunks is
+      --  Indefinite text string with byte string chunks (wrong type)
+      Bad : constant Stream_Element_Array :=
+        [16#7F#,                        -- indef text string start
+         16#42#, 16#41#, 16#42#,        -- byte string chunk (wrong!)
+         16#FF#];                        -- break
+      R : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Bad);
+   begin
+      TIO.Put_Line ("  Text string with byte string chunks:");
+      Check_Status ("ts bs chunk",
+                    CBOR.Err_Not_Well_Formed, R.Status);
+   end Test_TS_With_BS_Chunks;
+
+   procedure Test_Max_String_Length is
+      --  A 5-byte text string
+      E : constant Stream_Element_Array :=
+        Enc.Encode_Text_String ("hello");
+      --  With limit of 10: should pass
+      R_OK : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E, Max_String_Len => 10);
+      --  With limit of 4: should fail (string is 5 bytes)
+      R_Fail : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E, Max_String_Len => 4);
+      --  Byte string
+      BS : constant Stream_Element_Array :=
+        Enc.Encode_Byte_String ([16#01#, 16#02#, 16#03#]);
+      R_BS_OK : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (BS, Max_String_Len => 3);
+      R_BS_Fail : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (BS, Max_String_Len => 2);
+      --  Strict variant
+      R_Strict : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All_Strict (E, Max_String_Len => 4);
+   begin
+      TIO.Put_Line ("  Max string length:");
+      Check_Status ("str limit ok",
+                    CBOR.OK, R_OK.Status);
+      Check_Status ("str limit fail",
+                    CBOR.Err_String_Too_Long, R_Fail.Status);
+      Check_Status ("bs limit ok",
+                    CBOR.OK, R_BS_OK.Status);
+      Check_Status ("bs limit fail",
+                    CBOR.Err_String_Too_Long, R_BS_Fail.Status);
+      Check_Status ("strict str limit",
+                    CBOR.Err_String_Too_Long, R_Strict.Status);
+   end Test_Max_String_Length;
+
+   procedure Test_Encode_Text_UTF8 is
+      --  Test the new Encode_Text_String_UTF8 function
+      UTF8_Bytes : constant Stream_Element_Array :=
+        [16#48#, 16#65#, 16#6C#, 16#6C#, 16#6F#];  -- "Hello"
+      E : constant Stream_Element_Array :=
+        Enc.Encode_Text_String_UTF8 (UTF8_Bytes);
+      R : constant CBOR.Decode_Result := Dec.Decode (E);
+      D : constant Stream_Element_Array :=
+        Dec.Get_String (E, R.Item.TS_Ref);
+   begin
+      TIO.Put_Line ("  Encode_Text_String_UTF8:");
+      Check_Status ("utf8 enc status", CBOR.OK, R.Status);
+      Check_Kind ("utf8 enc kind",
+                  CBOR.MT_Text_String, R.Item.Kind);
+      Check ("utf8 enc len", 5,
+             UInt64 (R.Item.TS_Ref.Length));
+      Check ("utf8 enc b1", 16#48#, UInt64 (D (1)));
+      Check ("utf8 enc b5", 16#6F#, UInt64 (D (5)));
+   end Test_Encode_Text_UTF8;
+
 begin
    Rand_U64.Reset (Gen);
    TIO.Put_Line ("=== CBOR Ada Test Suite ===");
@@ -1144,6 +1354,14 @@ begin
    Test_Round_Trip_Strings;
    Test_Round_Trip_Floats;
    Test_Round_Trip_Containers;
+
+   Test_Too_Many_Items;
+   Test_Nested_Indefinite;
+   Test_Decode_Pos_Edge;
+   Test_Indef_String_Success;
+   Test_TS_With_BS_Chunks;
+   Test_Encode_Text_UTF8;
+   Test_Max_String_Length;
 
    TIO.New_Line;
    TIO.Put_Line ("=== Results ===");

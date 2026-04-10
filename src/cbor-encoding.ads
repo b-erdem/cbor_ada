@@ -5,12 +5,15 @@
 --  All functions produce well-formed, shortest-form CBOR.
 --  The entire package is proved at SPARK Level 2 (no runtime errors).
 
+with Interfaces;
+
 package CBOR.Encoding is
 
    pragma SPARK_Mode;
 
    use type Ada.Streams.Stream_Element_Offset;
    use type CBOR.UInt64;
+   use type Interfaces.Unsigned_8;
 
    --  Maximum input length to prevent overflow in result array sizing.
    Max_Data_Length : constant :=
@@ -43,6 +46,15 @@ package CBOR.Encoding is
       return Ada.Streams.Stream_Element_Array
      with Pre => Text'Length <= Max_Data_Length;
 
+   --  Encode definite-length text string from raw UTF-8 bytes
+   --  (major type 3). Use this when you have pre-encoded UTF-8
+   --  content as a Stream_Element_Array. Unlike Encode_Text_String,
+   --  this avoids the Latin-1/Character'Pos ambiguity.
+   function Encode_Text_String_UTF8
+     (Data : Ada.Streams.Stream_Element_Array)
+      return Ada.Streams.Stream_Element_Array
+     with Pre => Data'Length <= Max_Data_Length;
+
    --  Encode definite-length array header (major type 4).
    function Encode_Array
      (Count : CBOR.UInt64)
@@ -61,10 +73,9 @@ package CBOR.Encoding is
    --  Encode simple value (major type 7, one or two bytes).
    --  Values 24-31 are reserved per RFC 8949 and rejected.
    function Encode_Simple
-     (Value : CBOR.UInt64)
+     (Value : Interfaces.Unsigned_8)
       return Ada.Streams.Stream_Element_Array
-     with Pre => Value <= 255
-                 and then (Value <= 23 or else Value >= 32);
+     with Pre => Value <= 23 or else Value >= 32;
 
    --  Encode boolean (simple values 20/21).
    function Encode_Bool

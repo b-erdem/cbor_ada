@@ -169,28 +169,28 @@ package body CBOR.Decoding is
                   return (Status => OK,
                           Item    => (Kind      => CBOR.MT_Array,
                                       Head_Start => P,
-                                      Head_End   => P,
+                                      Item_End   => P,
                                       Arr_Count  => UInt64'Last),
                           Offset  => P);
                when CBOR.MT_Map =>
                   return (Status => OK,
                           Item    => (Kind      => CBOR.MT_Map,
                                       Head_Start => P,
-                                      Head_End   => P,
+                                      Item_End   => P,
                                       Map_Count  => UInt64'Last),
                           Offset  => P);
                when CBOR.MT_Byte_String =>
                   return (Status => OK,
                           Item    => (Kind       => CBOR.MT_Byte_String,
                                       Head_Start => P,
-                                      Head_End   => P,
+                                      Item_End   => P,
                                       BS_Ref     => CBOR.Null_Ref),
                           Offset  => P);
                when CBOR.MT_Text_String =>
                   return (Status => OK,
                           Item    => (Kind       => CBOR.MT_Text_String,
                                       Head_Start => P,
-                                      Head_End   => P,
+                                      Item_End   => P,
                                       TS_Ref     => CBOR.Null_Ref),
                           Offset  => P);
              when CBOR.MT_Simple_Value =>
@@ -207,7 +207,7 @@ package body CBOR.Decoding is
          end if;
 
           declare
-              Head_End : constant Ada.Streams.Stream_Element_Offset :=
+              Item_End : constant Ada.Streams.Stream_Element_Offset :=
                 (case AI is
                     when 0 .. 23  => P,
                     when 24       => P + 1,
@@ -216,7 +216,7 @@ package body CBOR.Decoding is
                     when 27       => P + 8,
                     when others   => P);
            begin
-            pragma Assert (Head_End in Data'Range);
+            pragma Assert (Item_End in Data'Range);
             case MT is
                when CBOR.MT_Unsigned_Integer =>
                   declare
@@ -232,9 +232,9 @@ package body CBOR.Decoding is
                              Item   => (Kind       =>
                                           CBOR.MT_Unsigned_Integer,
                                         Head_Start => P,
-                                        Head_End   => Head_End,
+                                        Item_End   => Item_End,
                                         UInt_Value => Val),
-                             Offset => Head_End);
+                             Offset => Item_End);
                   end;
 
                when CBOR.MT_Negative_Integer =>
@@ -251,9 +251,9 @@ package body CBOR.Decoding is
                              Item   => (Kind       =>
                                           CBOR.MT_Negative_Integer,
                                         Head_Start => P,
-                                        Head_End   => Head_End,
+                                        Item_End   => Item_End,
                                         NInt_Arg   => Val),
-                             Offset => Head_End);
+                             Offset => Item_End);
                   end;
 
                when CBOR.MT_Byte_String =>
@@ -276,8 +276,8 @@ package body CBOR.Decoding is
                           Ada.Streams.Stream_Element_Offset (Len);
                      begin
                         if SLen > 0
-                          and then (Head_End >= Data'Last
-                                    or else Data'Last - Head_End < SLen)
+                          and then (Item_End >= Data'Last
+                                    or else Data'Last - Item_End < SLen)
                         then
                            return (Status => Err_Truncated,
                                    Item    => <>,
@@ -287,18 +287,18 @@ package body CBOR.Decoding is
                            Data_End : constant Ada.Streams
                              .Stream_Element_Offset :=
                              (if SLen = 0 then
-                                 Head_End
+                                 Item_End
                               else
-                                 Head_End + SLen);
+                                 Item_End + SLen);
                         begin
                            pragma Assert (Data_End in Data'Range);
                            return (Status => OK,
                                    Item   => (Kind       =>
                                                 CBOR.MT_Byte_String,
                                               Head_Start => P,
-                                              Head_End   => Data_End,
+                                              Item_End   => Data_End,
                                               BS_Ref     =>
-                                                (First  => Head_End + 1,
+                                                (First  => Item_End + 1,
                                                  Length => SLen)),
                                    Offset => Data_End);
                         end;
@@ -326,8 +326,8 @@ package body CBOR.Decoding is
                           Ada.Streams.Stream_Element_Offset (Len);
                      begin
                         if SLen > 0
-                          and then (Head_End >= Data'Last
-                                    or else Data'Last - Head_End < SLen)
+                          and then (Item_End >= Data'Last
+                                    or else Data'Last - Item_End < SLen)
                         then
                            return (Status => Err_Truncated,
                                    Item    => <>,
@@ -337,18 +337,18 @@ package body CBOR.Decoding is
                            Data_End : constant Ada.Streams
                              .Stream_Element_Offset :=
                              (if SLen = 0 then
-                                 Head_End
+                                 Item_End
                               else
-                                 Head_End + SLen);
+                                 Item_End + SLen);
                         begin
                            pragma Assert (Data_End in Data'Range);
                            return (Status => OK,
                                    Item   => (Kind       =>
                                                 CBOR.MT_Text_String,
                                               Head_Start => P,
-                                              Head_End   => Data_End,
+                                              Item_End   => Data_End,
                                               TS_Ref     =>
-                                                (First  => Head_End + 1,
+                                                (First  => Item_End + 1,
                                                  Length => SLen)),
                                    Offset => Data_End);
                         end;
@@ -368,9 +368,9 @@ package body CBOR.Decoding is
                      return (Status => OK,
                              Item   => (Kind       => CBOR.MT_Array,
                                         Head_Start => P,
-                                        Head_End   => Head_End,
+                                        Item_End   => Item_End,
                                         Arr_Count  => Val),
-                             Offset => Head_End);
+                             Offset => Item_End);
                   end;
 
                when CBOR.MT_Map =>
@@ -386,9 +386,9 @@ package body CBOR.Decoding is
                      return (Status => OK,
                              Item   => (Kind       => CBOR.MT_Map,
                                         Head_Start => P,
-                                        Head_End   => Head_End,
+                                        Item_End   => Item_End,
                                         Map_Count  => Val),
-                             Offset => Head_End);
+                             Offset => Item_End);
                   end;
 
                when CBOR.MT_Tag =>
@@ -404,9 +404,9 @@ package body CBOR.Decoding is
                      return (Status => OK,
                              Item   => (Kind       => CBOR.MT_Tag,
                                         Head_Start => P,
-                                        Head_End   => Head_End,
+                                        Item_End   => Item_End,
                                         Tag_Number => Val),
-                             Offset => Head_End);
+                             Offset => Item_End);
                   end;
 
                when CBOR.MT_Simple_Value =>
@@ -428,10 +428,10 @@ package body CBOR.Decoding is
                              (Kind       =>
                                 CBOR.MT_Simple_Value,
                               Head_Start => P,
-                              Head_End   => Head_End,
+                              Item_End   => Item_End,
                               SV_Value   => SV,
                               Float_Ref  => CBOR.Null_Ref),
-                           Offset => Head_End);
+                           Offset => Item_End);
                      end;
                   elsif AI in 25 | 26 | 27 then
                      return
@@ -440,7 +440,7 @@ package body CBOR.Decoding is
                           (Kind       =>
                              CBOR.MT_Simple_Value,
                            Head_Start => P,
-                           Head_End   => Head_End,
+                           Item_End   => Item_End,
                            SV_Value   => AI,
                            Float_Ref  =>
                              (First  => P + 1,
@@ -449,7 +449,7 @@ package body CBOR.Decoding is
                                             when 26 => 4,
                                             when 27 => 8,
                                             when others => 0))),
-                        Offset => Head_End);
+                        Offset => Item_End);
                   else
                      return
                        (Status => OK,
@@ -457,10 +457,10 @@ package body CBOR.Decoding is
                           (Kind       =>
                              CBOR.MT_Simple_Value,
                            Head_Start => P,
-                           Head_End   => Head_End,
+                           Item_End   => Item_End,
                            SV_Value   => AI,
                            Float_Ref  => CBOR.Null_Ref),
-                        Offset => Head_End);
+                        Offset => Item_End);
                   end if;
             end case;
          end;
@@ -602,8 +602,10 @@ package body CBOR.Decoding is
    end Is_Valid_UTF8;
 
    function Decode_All
-     (Data       : Ada.Streams.Stream_Element_Array;
-      Check_UTF8 : Boolean := False)
+     (Data           : Ada.Streams.Stream_Element_Array;
+      Check_UTF8     : Boolean := False;
+      Max_String_Len : Ada.Streams.Stream_Element_Offset :=
+        Ada.Streams.Stream_Element_Offset'Last)
       return Decode_All_Result
    is
       type Container_Kind is (CK_Definite, CK_Indefinite);
@@ -788,6 +790,16 @@ package body CBOR.Decoding is
          return Result;
       end if;
 
+      if (R.Item.Kind = CBOR.MT_Byte_String
+            and then R.Item.BS_Ref.Length > Max_String_Len)
+        or else (R.Item.Kind = CBOR.MT_Text_String
+                   and then R.Item.TS_Ref.Length > Max_String_Len)
+      then
+         Result.Status := Err_String_Too_Long;
+         Result.Last_Pos := Pos;
+         return Result;
+      end if;
+
       Result.Count := 1;
       Result.Items (1) := R.Item;
       if R.Offset < Data'Last then
@@ -851,7 +863,7 @@ package body CBOR.Decoding is
             Result.Items (Result.Count) :=
               (Kind       => CBOR.MT_Simple_Value,
                Head_Start => Pos,
-               Head_End   => Pos,
+               Item_End   => Pos,
                SV_Value   => 31,
                Float_Ref  => CBOR.Null_Ref);
             Result.Last_Pos := Pos;
@@ -872,13 +884,24 @@ package body CBOR.Decoding is
                return Result;
             end if;
             pragma Assert (R.Item.Head_Start in Data'Range);
-            pragma Assert (R.Item.Head_End in Data'Range);
+            pragma Assert (R.Item.Item_End in Data'Range);
             pragma Assert (R.Offset in Data'Range);
 
             if R.Item.Kind = CBOR.MT_Simple_Value
               and then R.Item.SV_Value = 31
             then
                Result.Status := Err_Not_Well_Formed;
+               Result.Last_Pos := Pos;
+               return Result;
+            end if;
+
+            if (R.Item.Kind = CBOR.MT_Byte_String
+                  and then R.Item.BS_Ref.Length > Max_String_Len)
+              or else (R.Item.Kind = CBOR.MT_Text_String
+                         and then R.Item.TS_Ref.Length
+                                    > Max_String_Len)
+            then
+               Result.Status := Err_String_Too_Long;
                Result.Last_Pos := Pos;
                return Result;
             end if;
@@ -967,15 +990,17 @@ package body CBOR.Decoding is
     end Decode_All;
 
    function Decode_All_Strict
-     (Data       : Ada.Streams.Stream_Element_Array;
-      Check_UTF8 : Boolean := False)
+     (Data           : Ada.Streams.Stream_Element_Array;
+      Check_UTF8     : Boolean := False;
+      Max_String_Len : Ada.Streams.Stream_Element_Offset :=
+        Ada.Streams.Stream_Element_Offset'Last)
       return Decode_All_Result
    is
       R : constant Decode_All_Result :=
-        Decode_All (Data, Check_UTF8);
+        Decode_All (Data, Check_UTF8, Max_String_Len);
    begin
       if R.Status = OK and then R.Last_Pos /= Data'Last then
-         return (Status   => Err_Truncated,
+         return (Status   => Err_Trailing_Data,
                  Items    => R.Items,
                  Count    => R.Count,
                  Last_Pos => R.Last_Pos);
