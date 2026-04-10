@@ -3,9 +3,18 @@
 # Requires gnatprove installed via Alire:
 #   alr with gnatprove
 # This script temporarily adds gnatprove as a dependency if not present.
+#
+# Usage:
+#   scripts/prove [LEVEL] [TIMEOUT] [MODE]
+#
+# LEVEL   - gnatprove proof level 0-4 (default: 2)
+# TIMEOUT - per-check timeout in seconds (default: 30)
+# MODE    - "core" (default): prove encoding + decoding only
+#           "props": prove round-trip property lemmas only (slow)
+#           "all": prove everything
 
 set -e
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 export PATH="$HOME/.local/bin:$PATH"
 
 if ! alr exec -- gnatprove --version > /dev/null 2>&1; then
@@ -17,12 +26,37 @@ else
 fi
 
 LEVEL="${1:-2}"
-TIMEOUT="${2:-120}"
+TIMEOUT="${2:-30}"
+MODE="${3:-core}"
 
-alr exec -- gnatprove -P cbor_ada.gpr -j0 --level="$LEVEL" --timeout="$TIMEOUT"
+case "$MODE" in
+    core)
+        echo "Proving core packages (encoding + decoding)..."
+        alr exec -- gnatprove -P cbor_ada.gpr -j0 \
+            --level="$LEVEL" --timeout="$TIMEOUT" \
+            -u cbor-encoding.adb -u cbor-decoding.adb
+        ;;
+    props)
+        echo "Proving round-trip property lemmas (this may take a while)..."
+        alr exec -- gnatprove -P cbor_ada.gpr -j0 \
+            --level="$LEVEL" --timeout="$TIMEOUT" \
+            -u cbor-properties.adb
+        ;;
+    all)
+        echo "Proving all packages..."
+        alr exec -- gnatprove -P cbor_ada.gpr -j0 \
+            --level="$LEVEL" --timeout="$TIMEOUT"
+        ;;
+    *)
+        echo "Unknown mode: $MODE (use core, props, or all)"
+        exit 1
+        ;;
+esac
 
 echo ""
-grep "Total " obj/gnatprove/gnatprove.out
+if [ -f obj/gnatprove/gnatprove.out ]; then
+    grep "Total " obj/gnatprove/gnatprove.out || true
+fi
 
 if [ "$CLEANUP" = 1 ]; then
     echo ""

@@ -13,7 +13,7 @@
 --    - Break only valid inside indefinite-length containers
 --    - Indefinite-length string chunks must match parent major type
 --    - Indefinite-length maps must have even item count at break
---    - Maximum nesting depth enforced (Max_Nesting_Depth = 16)
+--    - Maximum nesting depth enforced (configurable, default 16)
 
 package CBOR.Decoding is
 
@@ -54,26 +54,48 @@ package CBOR.Decoding is
      with Ghost,
           Pre => Data'First >= 0 and then Data'Last <= Max_Data_Length;
 
-   --  Decode a single CBOR data item starting at Pos.
-   --  Pos = 0 means Data'First. Returns the decoded item and
-   --  the offset of the last byte consumed. Standalone break
-   --  (0xFF) is rejected as Err_Not_Well_Formed; use Decode_All
-   --  for parsing indefinite-length containers.
+   --  Decode a single CBOR data item starting at Data'First.
+   --  Result.Next is the first unconsumed byte position
+   --  (Data'Last + 1 when the entire buffer is consumed).
+   --  Standalone break (0xFF) is rejected as Err_Not_Well_Formed;
+   --  use Decode_All for indefinite-length containers.
    function Decode
-     (Data  : Ada.Streams.Stream_Element_Array;
-      Pos   : Ada.Streams.Stream_Element_Offset := 0)
+     (Data : Ada.Streams.Stream_Element_Array)
       return Decode_Result
      with Pre => Data'First >= 0
-                 and then Data'Last <= Max_Data_Length
-                 and then (Pos = 0
-                           or else Pos in Data'Range),
+                 and then Data'Last <= Max_Data_Length,
           Post => (if Decode'Result.Status = OK then
                       Decode'Result.Item.Head_Start
                         in Data'Range
                       and then Decode'Result.Item.Item_End
                         in Data'Range
-                      and then Decode'Result.Offset
+                      and then Decode'Result.Next
+                        >= Data'First
+                      and then Decode'Result.Next
+                        <= Data'Last + 1
+                      and then Decode'Result.Item.Item_End
+                        >= Decode'Result.Item.Head_Start
+                      and then Valid_Item_Refs
+                                 (Data, Decode'Result.Item));
+
+   --  Decode a single CBOR data item starting at Pos.
+   --  Pos must be a valid index in Data'Range.
+   function Decode
+     (Data : Ada.Streams.Stream_Element_Array;
+      Pos  : Ada.Streams.Stream_Element_Offset)
+      return Decode_Result
+     with Pre => Data'First >= 0
+                 and then Data'Last <= Max_Data_Length
+                 and then Pos in Data'Range,
+          Post => (if Decode'Result.Status = OK then
+                      Decode'Result.Item.Head_Start
                         in Data'Range
+                      and then Decode'Result.Item.Item_End
+                        in Data'Range
+                      and then Decode'Result.Next
+                        >= Data'First
+                      and then Decode'Result.Next
+                        <= Data'Last + 1
                       and then Decode'Result.Item.Item_End
                         >= Decode'Result.Item.Head_Start
                       and then Valid_Item_Refs
@@ -97,7 +119,8 @@ package CBOR.Decoding is
                    and then Get_String'Result'Last = Ref.Length;
 
    --  Decode a complete CBOR data item tree with nested items.
-   --  Uses an iterative stack (max depth = Max_Nesting_Depth).
+   --  Uses an iterative stack (max depth = Max_Depth, capped at
+   --  Max_Nesting_Depth = 16).
    --  When Check_UTF8 is True, validates text string content
    --  as UTF-8 per RFC 3629 and returns Err_Invalid_UTF8 on failure.
    --  Returns Err_Too_Many_Items if the tree exceeds Max_Decode_Items.
@@ -107,23 +130,27 @@ package CBOR.Decoding is
      (Data           : Ada.Streams.Stream_Element_Array;
       Check_UTF8     : Boolean := False;
       Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last)
+        Ada.Streams.Stream_Element_Offset'Last;
+      Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
       with Pre => Data'First >= 0
                   and then Data'Last <= Max_Data_Length
-                  and then Max_String_Len >= 0;
+                  and then Max_String_Len >= 0
+                  and then Max_Depth <= Max_Nesting_Depth;
 
    --  Like Decode_All but rejects trailing bytes after the top-level
-   --  item. Returns Err_Trailing_Data if Last_Pos /= Data'Last.
+   --  item. Returns Err_Trailing_Data if Next /= Data'Last + 1.
    function Decode_All_Strict
      (Data           : Ada.Streams.Stream_Element_Array;
       Check_UTF8     : Boolean := False;
       Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last)
+        Ada.Streams.Stream_Element_Offset'Last;
+      Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length
-                 and then Max_String_Len >= 0;
+                 and then Max_String_Len >= 0
+                 and then Max_Depth <= Max_Nesting_Depth;
 
    --  Validate byte array as UTF-8 per RFC 3629.
    --  Rejects overlong encodings, surrogates (U+D800..U+DFFF),

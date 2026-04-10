@@ -29,6 +29,14 @@ package CBOR.Encoding is
      (Arg : CBOR.UInt64)
       return Ada.Streams.Stream_Element_Array;
 
+   --  Encode a signed integer using the appropriate CBOR major type.
+   --  Non-negative values use major type 0 (unsigned).
+   --  Negative values use major type 1 (negative, encoding -1 - N).
+   --  Covers the range -(2^63) .. +(2^64 - 1) via separate paths.
+   function Encode_Integer
+     (Value : Interfaces.Integer_64)
+      return Ada.Streams.Stream_Element_Array;
+
    --  Encode definite-length byte string (major type 2).
    function Encode_Byte_String
      (Data : Ada.Streams.Stream_Element_Array)

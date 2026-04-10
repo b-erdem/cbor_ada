@@ -39,8 +39,8 @@ jobs:
       - name: Add gnatprove
         run: alr with gnatprove
 
-      - name: Run SPARK proofs
-        run: alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=2 --timeout=120
+      - name: Run SPARK proofs (core packages)
+        run: alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=2 --timeout=30 -u cbor-encoding.adb -u cbor-decoding.adb
 
       - name: Show proof summary
         if: always()

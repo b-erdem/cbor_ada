@@ -135,14 +135,16 @@ package CBOR is
       Err_Depth_Exceeded,
       Err_Invalid_UTF8,
       Err_Too_Many_Items,
-      Err_String_Too_Long);
+      Err_String_Too_Long,
+      Err_Resource_Limit);
 
-   --  Result of single-item Decode. Offset points to the last byte
-   --  consumed. On error, Item has default values.
+   --  Result of single-item Decode. Next is the position of
+   --  the first unconsumed byte (Data'Last + 1 when all input
+   --  is consumed). On error, Item has default values.
    type Decode_Result is record
       Status : Decode_Status := OK;
       Item   : CBOR_Item;
-      Offset : SE_Offset := 1;
+      Next   : SE_Offset := 1;
    end record;
 
    Max_Decode_Items : constant := 128;
@@ -152,13 +154,13 @@ package CBOR is
 
    type Item_Array is array (Item_Range) of CBOR_Item;
 
-   --  Result of Decode_All. Last_Pos is the offset of the last byte
-   --  consumed. Compare with Data'Last to detect trailing data.
+   --  Result of Decode_All. Next is the position of the first
+   --  unconsumed byte (Data'Last + 1 when all input is consumed).
    type Decode_All_Result is record
-      Status   : Decode_Status := OK;
-      Items    : Item_Array;
-      Count    : Item_Count := 0;
-      Last_Pos : SE_Offset := 1;
+      Status : Decode_Status := OK;
+      Items  : Item_Array;
+      Count  : Item_Count := 0;
+      Next   : SE_Offset := 1;
    end record;
 
 end CBOR;

@@ -130,21 +130,29 @@ package body CBOR.Decoding is
       end if;
    end Read_Arg;
 
-   function Decode
+   --  Internal decode starting at position P.
+   function Decode_At
      (Data : Ada.Streams.Stream_Element_Array;
-      Pos  : Ada.Streams.Stream_Element_Offset := 0)
+      P    : Ada.Streams.Stream_Element_Offset)
       return Decode_Result
-    is
-       P : constant Ada.Streams.Stream_Element_Offset :=
-         (if Pos = 0 then Data'First else Pos);
-    begin
-       if P not in Data'Range then
-         return (Status => Err_Truncated,
-                 Item    => <>,
-                 Offset  => P);
-      end if;
-      pragma Assert (P in Data'Range);
-
+     with Pre => Data'First >= 0
+                 and then Data'Last <= Max_Data_Length
+                 and then P in Data'Range,
+          Post => (if Decode_At'Result.Status = OK then
+                      Decode_At'Result.Item.Head_Start
+                        in Data'Range
+                      and then Decode_At'Result.Item.Item_End
+                        in Data'Range
+                      and then Decode_At'Result.Next
+                        >= Data'First
+                      and then Decode_At'Result.Next
+                        <= Data'Last + 1
+                      and then Decode_At'Result.Item.Item_End
+                        >= Decode_At'Result.Item.Head_Start
+                      and then Valid_Item_Refs
+                                 (Data, Decode_At'Result.Item))
+   is
+   begin
       declare
          B  : constant Unsigned_8 := Unsigned_8 (Data (P));
          MT : constant CBOR.Major_Type :=
@@ -154,7 +162,7 @@ package body CBOR.Decoding is
          if AI in 28 .. 30 then
             return (Status => Err_Not_Well_Formed,
                     Item    => <>,
-                    Offset  => P);
+                    Next    => P);
          end if;
 
          if AI = 31 then
@@ -164,46 +172,46 @@ package body CBOR.Decoding is
                     CBOR.MT_Tag =>
                   return (Status => Err_Not_Well_Formed,
                           Item    => <>,
-                          Offset  => P);
+                          Next    => P);
                when CBOR.MT_Array =>
                   return (Status => OK,
                           Item    => (Kind      => CBOR.MT_Array,
                                       Head_Start => P,
                                       Item_End   => P,
                                       Arr_Count  => UInt64'Last),
-                          Offset  => P);
+                          Next    => P + 1);
                when CBOR.MT_Map =>
                   return (Status => OK,
                           Item    => (Kind      => CBOR.MT_Map,
                                       Head_Start => P,
                                       Item_End   => P,
                                       Map_Count  => UInt64'Last),
-                          Offset  => P);
+                          Next    => P + 1);
                when CBOR.MT_Byte_String =>
                   return (Status => OK,
                           Item    => (Kind       => CBOR.MT_Byte_String,
                                       Head_Start => P,
                                       Item_End   => P,
                                       BS_Ref     => CBOR.Null_Ref),
-                          Offset  => P);
+                          Next    => P + 1);
                when CBOR.MT_Text_String =>
                   return (Status => OK,
                           Item    => (Kind       => CBOR.MT_Text_String,
                                       Head_Start => P,
                                       Item_End   => P,
                                       TS_Ref     => CBOR.Null_Ref),
-                          Offset  => P);
+                          Next    => P + 1);
              when CBOR.MT_Simple_Value =>
                   return (Status => Err_Not_Well_Formed,
                           Item    => <>,
-                          Offset  => P);
+                          Next    => P);
              end case;
           end if;
 
          if not Has_Head (Data, P, AI) then
             return (Status => Err_Truncated,
                     Item    => <>,
-                    Offset  => P);
+                    Next    => P);
          end if;
 
           declare
@@ -226,7 +234,7 @@ package body CBOR.Decoding is
                      if not Is_Shortest (AI, Val) then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      return (Status => OK,
                              Item   => (Kind       =>
@@ -234,7 +242,7 @@ package body CBOR.Decoding is
                                         Head_Start => P,
                                         Item_End   => Item_End,
                                         UInt_Value => Val),
-                             Offset => Item_End);
+                             Next   => Item_End + 1);
                   end;
 
                when CBOR.MT_Negative_Integer =>
@@ -245,7 +253,7 @@ package body CBOR.Decoding is
                      if not Is_Shortest (AI, Val) then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      return (Status => OK,
                              Item   => (Kind       =>
@@ -253,7 +261,7 @@ package body CBOR.Decoding is
                                         Head_Start => P,
                                         Item_End   => Item_End,
                                         NInt_Arg   => Val),
-                             Offset => Item_End);
+                             Next   => Item_End + 1);
                   end;
 
                when CBOR.MT_Byte_String =>
@@ -264,12 +272,12 @@ package body CBOR.Decoding is
                      if Len > Max_SE_Length then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      if not Is_Shortest (AI, Len) then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      declare
                         SLen : constant Ada.Streams.Stream_Element_Offset :=
@@ -281,7 +289,7 @@ package body CBOR.Decoding is
                         then
                            return (Status => Err_Truncated,
                                    Item    => <>,
-                                   Offset  => P);
+                                   Next    => P);
                         end if;
                         declare
                            Data_End : constant Ada.Streams
@@ -300,7 +308,7 @@ package body CBOR.Decoding is
                                               BS_Ref     =>
                                                 (First  => Item_End + 1,
                                                  Length => SLen)),
-                                   Offset => Data_End);
+                                   Next   => Data_End + 1);
                         end;
                      end;
                    end;
@@ -313,12 +321,12 @@ package body CBOR.Decoding is
                       if Len > Max_SE_Length then
                          return (Status => Err_Not_Well_Formed,
                                  Item    => <>,
-                                 Offset  => P);
+                                 Next    => P);
                       end if;
                       if not Is_Shortest (AI, Len) then
                          return (Status => Err_Not_Well_Formed,
                                  Item    => <>,
-                                 Offset  => P);
+                                 Next    => P);
                       end if;
                      declare
                         SLen : constant Ada.Streams
@@ -331,7 +339,7 @@ package body CBOR.Decoding is
                         then
                            return (Status => Err_Truncated,
                                    Item    => <>,
-                                   Offset  => P);
+                                   Next    => P);
                         end if;
                         declare
                            Data_End : constant Ada.Streams
@@ -350,7 +358,7 @@ package body CBOR.Decoding is
                                               TS_Ref     =>
                                                 (First  => Item_End + 1,
                                                  Length => SLen)),
-                                   Offset => Data_End);
+                                   Next   => Data_End + 1);
                         end;
                      end;
                   end;
@@ -363,14 +371,14 @@ package body CBOR.Decoding is
                      if not Is_Shortest (AI, Val) then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      return (Status => OK,
                              Item   => (Kind       => CBOR.MT_Array,
                                         Head_Start => P,
                                         Item_End   => Item_End,
                                         Arr_Count  => Val),
-                             Offset => Item_End);
+                             Next   => Item_End + 1);
                   end;
 
                when CBOR.MT_Map =>
@@ -381,14 +389,14 @@ package body CBOR.Decoding is
                      if not Is_Shortest (AI, Val) then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      return (Status => OK,
                              Item   => (Kind       => CBOR.MT_Map,
                                         Head_Start => P,
                                         Item_End   => Item_End,
                                         Map_Count  => Val),
-                             Offset => Item_End);
+                             Next   => Item_End + 1);
                   end;
 
                when CBOR.MT_Tag =>
@@ -399,14 +407,14 @@ package body CBOR.Decoding is
                      if not Is_Shortest (AI, Val) then
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
-                                Offset  => P);
+                                Next    => P);
                      end if;
                      return (Status => OK,
                              Item   => (Kind       => CBOR.MT_Tag,
                                         Head_Start => P,
                                         Item_End   => Item_End,
                                         Tag_Number => Val),
-                             Offset => Item_End);
+                             Next   => Item_End + 1);
                   end;
 
                when CBOR.MT_Simple_Value =>
@@ -420,7 +428,7 @@ package body CBOR.Decoding is
                              (Status =>
                                 Err_Not_Well_Formed,
                               Item    => <>,
-                              Offset  => P);
+                              Next    => P);
                         end if;
                         return
                           (Status => OK,
@@ -431,7 +439,7 @@ package body CBOR.Decoding is
                               Item_End   => Item_End,
                               SV_Value   => SV,
                               Float_Ref  => CBOR.Null_Ref),
-                           Offset => Item_End);
+                           Next   => Item_End + 1);
                      end;
                   elsif AI in 25 | 26 | 27 then
                      return
@@ -449,7 +457,7 @@ package body CBOR.Decoding is
                                             when 26 => 4,
                                             when 27 => 8,
                                             when others => 0))),
-                        Offset => Item_End);
+                        Next   => Item_End + 1);
                   else
                      return
                        (Status => OK,
@@ -460,11 +468,33 @@ package body CBOR.Decoding is
                            Item_End   => Item_End,
                            SV_Value   => AI,
                            Float_Ref  => CBOR.Null_Ref),
-                        Offset => Item_End);
+                        Next   => Item_End + 1);
                   end if;
             end case;
          end;
       end;
+   end Decode_At;
+
+   function Decode
+     (Data : Ada.Streams.Stream_Element_Array)
+      return Decode_Result
+   is
+   begin
+      if Data'Length = 0 then
+         return (Status => Err_Truncated,
+                 Item    => <>,
+                 Next    => Data'First);
+      end if;
+      return Decode_At (Data, Data'First);
+   end Decode;
+
+   function Decode
+     (Data : Ada.Streams.Stream_Element_Array;
+      Pos  : Ada.Streams.Stream_Element_Offset)
+      return Decode_Result
+   is
+   begin
+      return Decode_At (Data, Pos);
    end Decode;
 
    function Get_String
@@ -605,7 +635,8 @@ package body CBOR.Decoding is
      (Data           : Ada.Streams.Stream_Element_Array;
       Check_UTF8     : Boolean := False;
       Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last)
+        Ada.Streams.Stream_Element_Offset'Last;
+      Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
    is
       type Container_Kind is (CK_Definite, CK_Indefinite);
@@ -621,12 +652,17 @@ package body CBOR.Decoding is
 
        subtype Depth_Count is Natural range 0 .. Max_Nesting_Depth;
 
+       Effective_Max_Depth : constant Depth_Count :=
+         (if Max_Depth > Max_Nesting_Depth then
+             Max_Nesting_Depth
+          else
+             Max_Depth);
+
        Stack : array (1 .. Max_Nesting_Depth) of Stack_Entry;
        Depth : Depth_Count := 0;
 
-       Result  : Decode_All_Result;
-       Pos     : Ada.Streams.Stream_Element_Offset := Data'First;
-       Past_End : Boolean := False;
+       Result : Decode_All_Result;
+       Pos    : Ada.Streams.Stream_Element_Offset;
 
       function Raw_AI
         (Item : CBOR.CBOR_Item)
@@ -669,10 +705,13 @@ package body CBOR.Decoding is
                    and then Depth <= Max_Nesting_Depth
       is
       begin
-         if Depth = Max_Nesting_Depth then
+         if Depth >= Effective_Max_Depth then
             Result.Status := Err_Depth_Exceeded;
             return;
          end if;
+         --  Effective_Max_Depth <= Max_Nesting_Depth, so
+         --  Depth < Effective_Max_Depth implies Depth < Max_Nesting_Depth
+         --  and Depth + 1 <= Max_Nesting_Depth (fits in Depth_Count).
          Depth := Depth + 1;
          Stack (Depth) := (CK, Num_Left, Is_A_Map, 0,
                            Container);
@@ -726,7 +765,7 @@ package body CBOR.Decoding is
                         Container => Item.Kind);
                when CBOR.MT_Map =>
                   if Item.Map_Count > Max_Map_Entries then
-                     Result.Status := Err_Not_Well_Formed;
+                     Result.Status := Err_Resource_Limit;
                      return;
                   end if;
                   Push (CK_Definite, Item.Map_Count * 2,
@@ -778,15 +817,15 @@ package body CBOR.Decoding is
       R : Decode_Result;
 
    begin
-      Result := (Status   => OK,
-                 Items    => <>,
-                 Count    => 0,
-                 Last_Pos => Data'First);
+      Result := (Status => OK,
+                 Items  => <>,
+                 Count  => 0,
+                 Next   => Data'First);
 
       R := Decode (Data);
       if R.Status /= OK then
          Result.Status := R.Status;
-         Result.Last_Pos := Pos;
+         Result.Next := Data'First;
          return Result;
       end if;
 
@@ -796,19 +835,14 @@ package body CBOR.Decoding is
                    and then R.Item.TS_Ref.Length > Max_String_Len)
       then
          Result.Status := Err_String_Too_Long;
-         Result.Last_Pos := Pos;
+         Result.Next := Data'First;
          return Result;
       end if;
 
       Result.Count := 1;
       Result.Items (1) := R.Item;
-      if R.Offset < Data'Last then
-          Pos := R.Offset + 1;
-       else
-          Pos := R.Offset;
-          Past_End := True;
-       end if;
-      Result.Last_Pos := R.Offset;
+      Pos := R.Next;
+      Result.Next := R.Next;
 
       if Check_UTF8
         and then R.Item.Kind = CBOR.MT_Text_String
@@ -833,7 +867,7 @@ package body CBOR.Decoding is
          end if;
       end if;
 
-      while Depth > 0 and then not Past_End loop
+      while Depth > 0 and then Pos <= Data'Last loop
          pragma Loop_Variant
            (Decreases => Max_Decode_Items - Natural (Result.Count));
          pragma Loop_Invariant (Depth <= Max_Nesting_Depth);
@@ -850,12 +884,12 @@ package body CBOR.Decoding is
                 (Stack (Depth).Items_Seen mod 2) = 1
             then
                Result.Status := Err_Not_Well_Formed;
-               Result.Last_Pos := Pos;
+               Result.Next := Pos;
                return Result;
             end if;
             if Result.Count = Max_Decode_Items then
                Result.Status := Err_Too_Many_Items;
-               Result.Last_Pos := Pos;
+               Result.Next := Pos;
                return Result;
             end if;
             pragma Assert (Result.Count < Max_Decode_Items);
@@ -866,32 +900,27 @@ package body CBOR.Decoding is
                Item_End   => Pos,
                SV_Value   => 31,
                Float_Ref  => CBOR.Null_Ref);
-            Result.Last_Pos := Pos;
-            if Pos < Data'Last then
-               pragma Assert
-                 (Pos < Ada.Streams.Stream_Element_Offset'Last);
-               Pos := Pos + 1;
-            else
-               Past_End := True;
-            end if;
+            pragma Assert
+              (Pos < Ada.Streams.Stream_Element_Offset'Last);
+            Pos := Pos + 1;
+            Result.Next := Pos;
             Depth := Depth - 1;
             Pop_And_Propagate;
          else
             R := Decode (Data, Pos);
             if R.Status /= OK then
                Result.Status := R.Status;
-               Result.Last_Pos := Pos;
+               Result.Next := Pos;
                return Result;
             end if;
             pragma Assert (R.Item.Head_Start in Data'Range);
             pragma Assert (R.Item.Item_End in Data'Range);
-            pragma Assert (R.Offset in Data'Range);
 
             if R.Item.Kind = CBOR.MT_Simple_Value
               and then R.Item.SV_Value = 31
             then
                Result.Status := Err_Not_Well_Formed;
-               Result.Last_Pos := Pos;
+               Result.Next := Pos;
                return Result;
             end if;
 
@@ -902,13 +931,13 @@ package body CBOR.Decoding is
                                     > Max_String_Len)
             then
                Result.Status := Err_String_Too_Long;
-               Result.Last_Pos := Pos;
+               Result.Next := Pos;
                return Result;
             end if;
 
             if Result.Count = Max_Decode_Items then
                Result.Status := Err_Too_Many_Items;
-               Result.Last_Pos := Pos;
+               Result.Next := Pos;
                return Result;
             end if;
             pragma Assert (Result.Count < Max_Decode_Items);
@@ -931,7 +960,7 @@ package body CBOR.Decoding is
                        (R.Item, Parent_MT, Chunk_OK);
                      if not Chunk_OK then
                         Result.Status := Err_Not_Well_Formed;
-                        Result.Last_Pos := Pos;
+                        Result.Next := Pos;
                         return Result;
                      end if;
                   end;
@@ -945,15 +974,8 @@ package body CBOR.Decoding is
 
             Result.Count := Result.Count + 1;
             Result.Items (Result.Count) := R.Item;
-             if R.Offset < Data'Last then
-                pragma Assert
-                  (R.Offset < Ada.Streams.Stream_Element_Offset'Last);
-                Pos := R.Offset + 1;
-             else
-                Pos := R.Offset;
-                Past_End := True;
-             end if;
-            Result.Last_Pos := R.Offset;
+            Pos := R.Next;
+            Result.Next := R.Next;
 
             if Check_UTF8
               and then R.Item.Kind = CBOR.MT_Text_String
@@ -993,17 +1015,18 @@ package body CBOR.Decoding is
      (Data           : Ada.Streams.Stream_Element_Array;
       Check_UTF8     : Boolean := False;
       Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last)
+        Ada.Streams.Stream_Element_Offset'Last;
+      Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
    is
       R : constant Decode_All_Result :=
-        Decode_All (Data, Check_UTF8, Max_String_Len);
+        Decode_All (Data, Check_UTF8, Max_String_Len, Max_Depth);
    begin
-      if R.Status = OK and then R.Last_Pos /= Data'Last then
-         return (Status   => Err_Trailing_Data,
-                 Items    => R.Items,
-                 Count    => R.Count,
-                 Last_Pos => R.Last_Pos);
+      if R.Status = OK and then R.Next /= Data'Last + 1 then
+         return (Status => Err_Trailing_Data,
+                 Items  => R.Items,
+                 Count  => R.Count,
+                 Next   => R.Next);
       end if;
       return R;
    end Decode_All_Strict;

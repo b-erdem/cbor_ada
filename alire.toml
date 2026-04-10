@@ -1,9 +1,10 @@
 name = "cbor_ada"
 description = "CBOR (RFC 8949) encoding/decoding library for Ada/SPARK"
-version = "0.1.0-dev"
+version = "0.1.0"
 
 authors = ["Baris Erdem"]
 maintainers = ["Baris Erdem <baris@erdem.dev>"]
 maintainers-logins = ["b-erdem"]
 licenses = "Apache-2.0"
 tags = ["cbor", "rfc8949", "serialization", "spark", "embedded", "iot"]
+

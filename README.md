@@ -6,7 +6,7 @@ CBOR (RFC 8949) encoding/decoding library for Ada/SPARK with formal verification
 
 - **SPARK-proved encoder** — 100% proved at Level 2 (mathematically guaranteed no runtime errors)
 - **Full RFC 8949 well-formedness validation** — shortest-form checking, reserved AI rejection, string length bounds
-- **Bounded nested decoding** — iterative stack with configurable max depth (16)
+- **Bounded nested decoding** — iterative stack with configurable max depth (`Max_Depth` parameter, default 16)
 - **UTF-8 validation** — optional RFC 3629 checking for text strings
 - **All major types** — unsigned/negative integers, byte/text strings, arrays, maps, tags, simple values, floats (opaque), break, indefinite-length starts
 - **No heap allocation** — stack-only, suitable for embedded/constrained environments
@@ -33,6 +33,10 @@ Bytes := Encode_Unsigned (42);
 
 --  Negative integer (-1 - Arg)
 Bytes := Encode_Negative (9);  --  encodes -10
+
+--  Signed integer (auto-selects major type 0 or 1)
+Bytes := Encode_Integer (42);    --  same as Encode_Unsigned (42)
+Bytes := Encode_Integer (-10);   --  same as Encode_Negative (9)
 
 --  Text string (Latin-1 bytes; caller ensures valid content)
 Bytes := Encode_Text_String ("hello");
@@ -102,7 +106,7 @@ end if;
 --  Decode entire nested structure
 R : Decode_All_Result := Decoding.Decode_All (Input_Bytes);
 --  R.Items (1 .. R.Count) contains all items in tree order
---  R.Last_Pos is the offset of the last byte consumed
+--  R.Next is the first unconsumed byte position
 
 --  With UTF-8 validation
 R := Decoding.Decode_All (Input_Bytes, Check_UTF8 => True);
@@ -110,12 +114,15 @@ R := Decoding.Decode_All (Input_Bytes, Check_UTF8 => True);
 --  With string length limit (DoS protection for untrusted input)
 R := Decoding.Decode_All (Input_Bytes, Max_String_Len => 4096);
 
+--  With custom nesting depth limit
+R := Decoding.Decode_All (Input_Bytes, Max_Depth => 8);
+
 --  Strict mode: reject trailing bytes
 R := Decoding.Decode_All_Strict (Input_Bytes);
 
---  Manual nested decode (walk with Decode + Offset)
+--  Manual nested decode (walk with Decode + Next)
 R1 := Decoding.Decode (Data);
-R2 := Decoding.Decode (Data, R1.Offset + 1);
+R2 := Decoding.Decode (Data, R1.Next);
 ```
 
 ## Well-formedness checks
@@ -141,10 +148,11 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 | `Err_Not_Well_Formed` | RFC 8949 well-formedness violation |
 | `Err_Truncated` | Input cut short (incomplete item) |
 | `Err_Trailing_Data` | Extra bytes after top-level item (strict mode) |
-| `Err_Depth_Exceeded` | Nesting depth > `Max_Nesting_Depth` (16) |
+| `Err_Depth_Exceeded` | Nesting depth > `Max_Depth` (configurable, default 16) |
 | `Err_Invalid_UTF8` | Invalid UTF-8 in text string (when `Check_UTF8 => True`) |
 | `Err_Too_Many_Items` | Item tree exceeds `Max_Decode_Items` (128) |
 | `Err_String_Too_Long` | String length exceeds `Max_String_Len` parameter |
+| `Err_Resource_Limit` | Map count too large to represent as item pairs |
 
 ## SPARK proof status
 

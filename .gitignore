@@ -9,3 +9,4 @@ config/
 *.cswi
 *.lexch
 *.bexch
+AGENTS.md

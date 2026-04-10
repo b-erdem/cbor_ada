@@ -229,10 +229,10 @@ procedure Test_Cbor is
       Check_Kind ("arr kind",
                   CBOR.MT_Array, R1.Item.Kind);
       Check ("arr count", 2, R1.Item.Arr_Count);
-      R2 := Dec.Decode (E, R1.Offset + 1);
+      R2 := Dec.Decode (E, R1.Next);
       Check_Status ("elem1 status", CBOR.OK, R2.Status);
       Check ("elem1 value", 1, R2.Item.UInt_Value);
-      R3 := Dec.Decode (E, R2.Offset + 1);
+      R3 := Dec.Decode (E, R2.Next);
       Check_Status ("elem2 status", CBOR.OK, R3.Status);
       Check ("elem2 sv", 21,
              UInt64 (R3.Item.SV_Value));
@@ -1193,7 +1193,7 @@ procedure Test_Cbor is
       TIO.Put_Line ("  Decode Pos edge cases:");
       Check_Status ("pos edge r1", CBOR.OK, R1.Status);
       Check ("pos edge r1 val", 10, R1.Item.UInt_Value);
-      R2 := Dec.Decode (E, R1.Offset + 1);
+      R2 := Dec.Decode (E, R1.Next);
       Check_Status ("pos edge r2", CBOR.OK, R2.Status);
       Check ("pos edge r2 val", 5, R2.Item.UInt_Value);
       --  Decode at exactly Data'Last (single-byte item 0x05)
@@ -1258,6 +1258,119 @@ procedure Test_Cbor is
       Check_Status ("ts bs chunk",
                     CBOR.Err_Not_Well_Formed, R.Status);
    end Test_TS_With_BS_Chunks;
+
+   procedure Test_Encode_Integer is
+   begin
+      TIO.Put_Line ("  Encode_Integer:");
+      --  Positive values use major type 0
+      Check_Enc ("int 0", [16#00#],
+                 Enc.Encode_Integer (0));
+      Check_Enc ("int 1", [16#01#],
+                 Enc.Encode_Integer (1));
+      Check_Enc ("int 23", [16#17#],
+                 Enc.Encode_Integer (23));
+      Check_Enc ("int 24", [16#18#, 16#18#],
+                 Enc.Encode_Integer (24));
+      Check_Enc ("int 1000",
+                 [16#19#, 16#03#, 16#e8#],
+                 Enc.Encode_Integer (1000));
+      --  Negative values use major type 1
+      Check_Enc ("int -1", [16#20#],
+                 Enc.Encode_Integer (-1));
+      Check_Enc ("int -10", [16#29#],
+                 Enc.Encode_Integer (-10));
+      Check_Enc ("int -100",
+                 [16#38#, 16#63#],
+                 Enc.Encode_Integer (-100));
+      Check_Enc ("int -1000",
+                 [16#39#, 16#03#, 16#e7#],
+                 Enc.Encode_Integer (-1000));
+      --  Round-trip: positive
+      declare
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Integer (42);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+      begin
+         Check_Status ("int rt 42", CBOR.OK, R.Status);
+         Check ("int rt 42 val", 42, R.Item.UInt_Value);
+      end;
+      --  Round-trip: negative
+      declare
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Integer (-10);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+      begin
+         Check_Status ("int rt -10", CBOR.OK, R.Status);
+         Check_Kind ("int rt -10 kind",
+                     CBOR.MT_Negative_Integer, R.Item.Kind);
+         Check ("int rt -10 arg", 9, R.Item.NInt_Arg);
+      end;
+      --  Integer_64'First = -2^63, Arg = 2^63 - 1
+      declare
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Integer (Interfaces.Integer_64'First);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+      begin
+         Check_Status ("int rt min", CBOR.OK, R.Status);
+         Check_Kind ("int rt min kind",
+                     CBOR.MT_Negative_Integer, R.Item.Kind);
+         Check ("int rt min arg",
+                UInt64 (Interfaces.Integer_64'Last),
+                R.Item.NInt_Arg);
+      end;
+      --  Integer_64'Last = 2^63 - 1
+      declare
+         E : constant Stream_Element_Array :=
+           Enc.Encode_Integer (Interfaces.Integer_64'Last);
+         R : constant CBOR.Decode_Result := Dec.Decode (E);
+      begin
+         Check_Status ("int rt max", CBOR.OK, R.Status);
+         Check ("int rt max val",
+                UInt64 (Interfaces.Integer_64'Last),
+                R.Item.UInt_Value);
+      end;
+   end Test_Encode_Integer;
+
+   procedure Test_Max_Depth_Parameter is
+      --  8 levels of nesting: [[[[[[[[0]]]]]]]]
+      Depth_8 : constant Stream_Element_Array (1 .. 9) :=
+        [1 .. 8 => 16#81#, 9 => 16#00#];
+   begin
+      TIO.Put_Line ("  Max_Depth parameter:");
+      --  Max_Depth = 8: should pass (depth exactly 8)
+      declare
+         R : constant CBOR.Decode_All_Result :=
+           Dec.Decode_All (Depth_8, Max_Depth => 8);
+      begin
+         Check_Status ("depth 8 ok", CBOR.OK, R.Status);
+         Check ("depth 8 count", 9, UInt64 (R.Count));
+      end;
+      --  Max_Depth = 7: should fail (needs 8)
+      declare
+         R : constant CBOR.Decode_All_Result :=
+           Dec.Decode_All (Depth_8, Max_Depth => 7);
+      begin
+         Check_Status ("depth 7 fail",
+                       CBOR.Err_Depth_Exceeded, R.Status);
+      end;
+      --  Max_Depth = 1: only flat items allowed
+      declare
+         Flat : constant Stream_Element_Array :=
+           Enc.Encode_Unsigned (42);
+         R : constant CBOR.Decode_All_Result :=
+           Dec.Decode_All (Flat, Max_Depth => 1);
+      begin
+         Check_Status ("depth 1 flat", CBOR.OK, R.Status);
+      end;
+      --  Strict variant respects Max_Depth
+      declare
+         R : constant CBOR.Decode_All_Result :=
+           Dec.Decode_All_Strict (Depth_8, Max_Depth => 7);
+      begin
+         Check_Status ("strict depth 7",
+                       CBOR.Err_Depth_Exceeded, R.Status);
+      end;
+   end Test_Max_Depth_Parameter;
 
    procedure Test_Max_String_Length is
       --  A 5-byte text string
@@ -1361,6 +1474,8 @@ begin
    Test_Indef_String_Success;
    Test_TS_With_BS_Chunks;
    Test_Encode_Text_UTF8;
+   Test_Encode_Integer;
+   Test_Max_Depth_Parameter;
    Test_Max_String_Length;
 
    TIO.New_Line;

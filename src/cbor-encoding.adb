@@ -146,6 +146,24 @@ package body CBOR.Encoding is
       return Encode_Head (CBOR.MT_Negative_Integer, Arg);
    end Encode_Negative;
 
+   function Encode_Integer
+     (Value : Interfaces.Integer_64)
+      return SE.Stream_Element_Array
+   is
+   begin
+      if Value >= 0 then
+         return Encode_Unsigned (U64 (Value));
+      else
+         --  CBOR negative: -1 - Arg, so Arg = -(Value + 1)
+         --  Value is in Integer_64'First .. -1, so Value + 1 is in
+         --  Integer_64'First + 1 .. 0 (no overflow since min is -2^63 + 1).
+         --  Then -(Value + 1) is in 0 .. 2^63 - 1, fits in UInt64.
+         --  Special case: Integer_64'First = -2^63, Arg = 2^63 - 1.
+         --  Value + 1 = -2^63 + 1, -(Value + 1) = 2^63 - 1.
+         return Encode_Negative (U64 (-(Value + 1)));
+      end if;
+   end Encode_Integer;
+
    function Encode_Byte_String
      (Data : SE.Stream_Element_Array)
       return SE.Stream_Element_Array
