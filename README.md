@@ -1,18 +1,16 @@
 # cbor_ada
 
-CBOR (RFC 8949) encoding/decoding library for Ada/SPARK with formal verification.
+A CBOR ([RFC 8949](https://www.rfc-editor.org/rfc/rfc8949)) encoding and decoding library for Ada 2022, built with [SPARK](https://www.adacore.com/about-spark) formal verification.
 
-## Features
+The encoder and decoder are **100% SPARK-proved** at Level 2 — mathematically guaranteed free of runtime errors (no buffer overflows, no range violations, no integer overflows, no uninitialized reads).
 
-- **SPARK-proved encoder** — 100% proved at Level 2 (mathematically guaranteed no runtime errors)
-- **Full RFC 8949 well-formedness validation** — shortest-form checking, reserved AI rejection, string length bounds
-- **Bounded nested decoding** — iterative stack with configurable max depth (`Max_Depth` parameter, default 16)
-- **UTF-8 validation** — optional RFC 3629 checking for text strings
-- **All major types** — unsigned/negative integers, byte/text strings, arrays, maps, tags, simple values, floats (opaque), break, indefinite-length starts
-- **No heap allocation** — stack-only, suitable for embedded/constrained environments
-- **`pragma Pure`** — stateless, no side effects
-- **Configurable string length limit** — `Max_String_Len` parameter for DoS protection on untrusted input
-- **Round-trip property lemmas** — SPARK ghost proofs that `Decode(Encode(V)) = V`
+## Key properties
+
+- **Formally verified** — 475 proof obligations, 0 unproved (CVC5/Z3)
+- **RFC 8949 compliant** — full well-formedness validation with shortest-form checking
+- **No heap allocation** — stack-only, suitable for embedded and safety-critical systems
+- **Stateless** — `pragma Pure`, no global state, no side effects
+- **Zero dependencies** — only the Ada standard library
 
 ## Installation
 
@@ -20,125 +18,121 @@ CBOR (RFC 8949) encoding/decoding library for Ada/SPARK with formal verification
 alr with cbor_ada
 ```
 
-## Usage
+Or add to your `alire.toml`:
+
+```toml
+[[depends-on]]
+cbor_ada = "~0.1.0"
+```
+
+## Quick start
 
 ### Encoding
 
 ```ada
+with Ada.Streams;  use Ada.Streams;
 with CBOR.Encoding;
-use CBOR.Encoding;
 
---  Unsigned integer
-Bytes := Encode_Unsigned (42);
+procedure Example is
+   package Enc renames CBOR.Encoding;
+begin
+   --  Integers
+   Enc.Encode_Unsigned (42);       --  major type 0
+   Enc.Encode_Negative (9);        --  major type 1: encodes -10
+   Enc.Encode_Integer (-10);       --  auto-selects: same as above
 
---  Negative integer (-1 - Arg)
-Bytes := Encode_Negative (9);  --  encodes -10
+   --  Strings
+   Enc.Encode_Text_String ("hello");
+   Enc.Encode_Text_String_UTF8 (UTF8_Bytes);  --  raw UTF-8 bytes
+   Enc.Encode_Byte_String (Raw_Data);
 
---  Signed integer (auto-selects major type 0 or 1)
-Bytes := Encode_Integer (42);    --  same as Encode_Unsigned (42)
-Bytes := Encode_Integer (-10);   --  same as Encode_Negative (9)
+   --  Containers (header + elements)
+   declare
+      Output : constant Stream_Element_Array :=
+        Enc.Encode_Array (3)
+        & Enc.Encode_Unsigned (1)
+        & Enc.Encode_Text_String ("two")
+        & Enc.Encode_Bool (True);
+   begin
+      null;
+   end;
 
---  Text string (Latin-1 bytes; caller ensures valid content)
-Bytes := Encode_Text_String ("hello");
-
---  Text string from raw UTF-8 bytes (preferred for UTF-8 content)
-Bytes := Encode_Text_String_UTF8 (UTF8_Bytes);
-
---  Byte string
-Bytes := Encode_Byte_String (Raw_Bytes);
-
---  Array header followed by elements
-Output := Encode_Array (3)
-  & Encode_Unsigned (1)
-  & Encode_Text_String ("two")
-  & Encode_Bool (True);
-
---  Map header followed by key-value pairs
-Output := Encode_Map (1)
-  & Encode_Text_String ("key")
-  & Encode_Unsigned (42);
-
---  Tag
-Output := Encode_Tag (0) & Encode_Text_String ("2023-01-01");
-
---  Bool, null, undefined
-Encode_Bool (True);   --  0xF5
-Encode_Null;           --  0xF6
-Encode_Undefined;      --  0xF7
-
---  Simple values (0-23 and 32-255 only; 24-31 reserved)
-Encode_Simple (32);
-
---  Floats (raw bytes, no conversion)
-Encode_Float_Half ([16#3C#, 16#00#]);
-Encode_Float_Single ([16#3F#, 16#80#, 16#00#, 16#00#]);
-Encode_Float_Double ([16#3F#, 16#F0#, 16#00#, 16#00#, 16#00#, 16#00#, 16#00#, 16#00#]);
-
---  Indefinite-length starts
-Encode_Array_Start;          --  0x9F ... Encode_Break
-Encode_Map_Start;            --  0xBF ... Encode_Break
-Encode_Byte_String_Start;    --  0x5F ... Encode_Break
-Encode_Text_String_Start;    --  0x7F ... Encode_Break
-Encode_Break;                --  0xFF
+   --  Maps, tags, simple values, floats, indefinite-length — all supported
+end Example;
 ```
 
 ### Decoding
 
 ```ada
+with Ada.Streams;  use Ada.Streams;
+with CBOR;         use CBOR;
 with CBOR.Decoding;
-with CBOR;
-use CBOR;
 
---  Single-item decode
-R : Decode_Result := Decoding.Decode (Input_Bytes);
-if R.Status = OK then
-   case R.Item.Kind is
-      when MT_Unsigned_Integer =>
-         Value := R.Item.UInt_Value;
-      when MT_Text_String =>
-         Text := Decoding.Get_String (Input_Bytes, R.Item.TS_Ref);
-      when MT_Array =>
-         Count := R.Item.Arr_Count;
-      --  ...
-   end case;
-end if;
+procedure Example is
+   Input : constant Stream_Element_Array := ...;
+begin
+   --  Single item
+   declare
+      R : constant Decode_Result := Decoding.Decode (Input);
+   begin
+      if R.Status = OK then
+         case R.Item.Kind is
+            when MT_Unsigned_Integer => ...  --  R.Item.UInt_Value
+            when MT_Text_String     => ...  --  Decoding.Get_String (Input, R.Item.TS_Ref)
+            when others             => ...
+         end case;
+      end if;
+   end;
 
---  Decode entire nested structure
-R : Decode_All_Result := Decoding.Decode_All (Input_Bytes);
---  R.Items (1 .. R.Count) contains all items in tree order
---  R.Next is the first unconsumed byte position
+   --  Full item tree (arrays, maps, tags expanded)
+   declare
+      R : constant Decode_All_Result := Decoding.Decode_All (Input);
+   begin
+      --  R.Items (1 .. R.Count) in depth-first order
+      --  R.Next = first unconsumed byte position
+      null;
+   end;
 
---  With UTF-8 validation
-R := Decoding.Decode_All (Input_Bytes, Check_UTF8 => True);
-
---  With string length limit (DoS protection for untrusted input)
-R := Decoding.Decode_All (Input_Bytes, Max_String_Len => 4096);
-
---  With custom nesting depth limit
-R := Decoding.Decode_All (Input_Bytes, Max_Depth => 8);
-
---  Strict mode: reject trailing bytes
-R := Decoding.Decode_All_Strict (Input_Bytes);
-
---  Manual nested decode (walk with Decode + Next)
-R1 := Decoding.Decode (Data);
-R2 := Decoding.Decode (Data, R1.Next);
+   --  Walk manually
+   declare
+      R1 : constant Decode_Result := Decoding.Decode (Input);
+      R2 : constant Decode_Result := Decoding.Decode (Input, R1.Next);
+   begin
+      null;
+   end;
+end Example;
 ```
 
-## Well-formedness checks
+### Security options for untrusted input
 
-The decoder rejects non-well-formed CBOR per RFC 8949:
+```ada
+--  Reject trailing bytes after the top-level item
+R := Decoding.Decode_All_Strict (Input);
 
-- Additional information 28-30 (reserved)
-- Simple values < 32 in two-byte form (Section 3.3)
-- Non-shortest-form integer encoding
-- String lengths exceeding `Stream_Element_Offset'Last`
-- Truncated input (incomplete heads, strings, containers)
-- Indefinite-length for major types 0, 1, 6
-- Break outside indefinite-length containers
-- Wrong chunk types in indefinite-length byte/text strings
-- Odd item count in indefinite-length maps at break
-- Nesting depth exceeding 16
+--  Limit nesting depth (default: 16)
+R := Decoding.Decode_All (Input, Max_Depth => 4);
+
+--  Limit string lengths (default: no limit)
+R := Decoding.Decode_All (Input, Max_String_Len => 4096);
+
+--  Validate UTF-8 in text strings
+R := Decoding.Decode_All (Input, Check_UTF8 => True);
+```
+
+## Well-formedness validation
+
+The decoder enforces all RFC 8949 well-formedness requirements:
+
+| Check | Reference |
+|-------|-----------|
+| Reserved additional information 28-30 rejected | Section 3 |
+| Simple values 0-31 in two-byte form rejected | Section 3.3 |
+| Shortest-form encoding required for all arguments | Section 4.1 |
+| Indefinite-length rejected for major types 0, 1, 6 | Section 3.2.6 |
+| Break code rejected outside indefinite-length containers | Section 3.2.1 |
+| Indefinite-length string chunks must match parent type | Section 3.2.3 |
+| Indefinite-length maps must have even item count | Section 3.2.2 |
+| Truncated input detected | - |
 
 ## Error codes
 
@@ -146,38 +140,79 @@ The decoder rejects non-well-formed CBOR per RFC 8949:
 |--------|---------|
 | `OK` | Successful decode |
 | `Err_Not_Well_Formed` | RFC 8949 well-formedness violation |
-| `Err_Truncated` | Input cut short (incomplete item) |
+| `Err_Truncated` | Input ends mid-item |
 | `Err_Trailing_Data` | Extra bytes after top-level item (strict mode) |
-| `Err_Depth_Exceeded` | Nesting depth > `Max_Depth` (configurable, default 16) |
-| `Err_Invalid_UTF8` | Invalid UTF-8 in text string (when `Check_UTF8 => True`) |
-| `Err_Too_Many_Items` | Item tree exceeds `Max_Decode_Items` (128) |
-| `Err_String_Too_Long` | String length exceeds `Max_String_Len` parameter |
-| `Err_Resource_Limit` | Map count too large to represent as item pairs |
+| `Err_Depth_Exceeded` | Nesting exceeds `Max_Depth` (configurable, default 16) |
+| `Err_Invalid_UTF8` | Invalid UTF-8 in text string (`Check_UTF8 => True`) |
+| `Err_Too_Many_Items` | Item tree exceeds 128 items |
+| `Err_String_Too_Long` | String length exceeds `Max_String_Len` |
+| `Err_Resource_Limit` | Map entry count too large to track |
 
 ## SPARK proof status
 
-| Component    | Proved | Notes |
-|-------------|--------|-------|
-| Encoder     | 100%   | Proved at Level 2 |
-| Decoder     | 100%   | Proved at Level 1 and Level 2 |
-| Properties  | Ghost  | Round-trip lemmas with postconditions |
-| **Total**   | **100%** | **0 unproved checks** |
+```
+SPARK Analysis results   Total   Flow   Provers   Unproved
+Run-time Checks            310      .       310          .
+Assertions                  68      .        68          .
+Functional Contracts        46      .        46          .
+Termination                 46     43         3          .
+Total                      475     48       427          .
+```
+
+All 475 checks proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
+
+### Running proofs locally
+
+```bash
+# Prove core packages (~30 seconds)
+scripts/prove
+
+# Prove everything including round-trip lemmas (slow)
+scripts/prove 2 120 all
+```
+
+## Encoder API reference
+
+| Function | Description |
+|----------|-------------|
+| `Encode_Unsigned (Value)` | Major type 0 — unsigned integer (0 to 2^64-1) |
+| `Encode_Negative (Arg)` | Major type 1 — negative integer (-1 - Arg) |
+| `Encode_Integer (Value)` | Signed integer — auto-selects type 0 or 1 |
+| `Encode_Byte_String (Data)` | Major type 2 — definite-length byte string |
+| `Encode_Text_String (Text)` | Major type 3 — text string (Latin-1 bytes) |
+| `Encode_Text_String_UTF8 (Data)` | Major type 3 — text string from raw UTF-8 bytes |
+| `Encode_Array (Count)` | Major type 4 — definite-length array header |
+| `Encode_Map (Count)` | Major type 5 — definite-length map header |
+| `Encode_Tag (Tag_Number)` | Major type 6 — semantic tag |
+| `Encode_Simple (Value)` | Major type 7 — simple value (0-23, 32-255) |
+| `Encode_Bool (Value)` | Boolean (simple values 20/21) |
+| `Encode_Null` | Null (simple value 22) |
+| `Encode_Undefined` | Undefined (simple value 23) |
+| `Encode_Float_Half (Bytes)` | Half-precision float (2 raw bytes) |
+| `Encode_Float_Single (Bytes)` | Single-precision float (4 raw bytes) |
+| `Encode_Float_Double (Bytes)` | Double-precision float (8 raw bytes) |
+| `Encode_Array_Start` | Indefinite-length array (0x9F) |
+| `Encode_Map_Start` | Indefinite-length map (0xBF) |
+| `Encode_Byte_String_Start` | Indefinite-length byte string (0x5F) |
+| `Encode_Text_String_Start` | Indefinite-length text string (0x7F) |
+| `Encode_Break` | Break stop code (0xFF) |
 
 ## Limitations
 
-- Float values are encoded/decoded as opaque byte arrays (no IEEE 754 conversion)
-- No half-precision float conversion utility
-- UTF-8 validation is opt-in via `Check_UTF8` parameter
-- `Encode_Text_String` serializes raw Character'Pos bytes (Latin-1); use `Encode_Text_String_UTF8` for pre-encoded UTF-8
-- `Decode_All` returns at most 128 items (`Max_Decode_Items`)
-- Tag semantics (e.g., tag 0 date validation) are not enforced
-- `Decode_All` accepts trailing bytes; use `Decode_All_Strict` to reject them
+- Float values are opaque byte arrays (no IEEE 754 conversion)
+- `Encode_Text_String` passes through Latin-1 bytes; use `Encode_Text_String_UTF8` for pre-encoded UTF-8
+- `Decode_All` returns at most 128 items; use manual `Decode` + `Next` walking for larger structures
+- Tag content semantics (e.g., tag 0 date format) are not validated
+- UTF-8 validation is opt-in (`Check_UTF8 => True`)
 
-## Dependencies
+## Requirements
 
-- GNAT >= 15.1 (Ada 2022)
-- gnatprove >= 15.1 (for SPARK proofs only — not a library dependency)
+- **GNAT** >= 15.1 with Ada 2022 support
+- **gnatprove** >= 15.1 (for running SPARK proofs only — not a library dependency)
+- **Alire** >= 2.0 (package manager)
 
 ## License
 
-Apache-2.0. Certification artifacts, safety case documentation, and formal verification evidence packages available for safety-critical deployments — contact [baris@erdem.dev](mailto:baris@erdem.dev).
+Apache-2.0 — see [LICENSE](LICENSE).
+
+Certification artifacts, safety case documentation, and formal verification evidence packages available for safety-critical deployments — contact [baris@erdem.dev](mailto:baris@erdem.dev).
