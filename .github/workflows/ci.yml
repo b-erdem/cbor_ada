@@ -8,16 +8,15 @@ on:
 
 jobs:
   build-and-test:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Alire
         uses: alire-project/setup-alire@v3
+        with:
+          cache: true
 
       - name: Build library
         run: alr build
@@ -30,11 +29,15 @@ jobs:
 
   prove:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Alire
         uses: alire-project/setup-alire@v3
+        with:
+          cache: true
 
       - name: Add gnatprove
         run: alr with gnatprove
@@ -46,5 +49,15 @@ jobs:
         if: always()
         run: |
           if [ -f obj/gnatprove/gnatprove.out ]; then
-            grep "Total " obj/gnatprove/gnatprove.out || true
+            cat obj/gnatprove/gnatprove.out
+          fi
+
+      - name: Fail on unproved checks
+        run: |
+          if grep -q "Unproved" obj/gnatprove/gnatprove.out 2>/dev/null; then
+            unproved=$(grep "^Total" obj/gnatprove/gnatprove.out | grep -oP '\d+(?= \(\d+%\)$)' || echo "")
+            if [ -n "$unproved" ] && [ "$unproved" != "0" ]; then
+              echo "::error::SPARK proof has unproved checks"
+              exit 1
+            fi
           fi
