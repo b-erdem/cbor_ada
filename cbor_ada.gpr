@@ -9,8 +9,13 @@ library project Cbor_Ada is
 
     package Compiler is
        for Switches ("Ada") use
-         ("-g", "-O2", "-gnatwa", "-gnatW8", "-gnatyM120",
-          "-gnat2022");
+         ("-g", "-O2", "-gnatwa", "-gnatwC", "-gnatW8",
+          "-gnatyM120", "-gnat2022",
+          "-gnato",    --  overflow checks (defense-in-depth)
+          "-gnatVa");  --  validity checks
+          --  Note: -gnata (assertions) is intentionally omitted here.
+          --  Internal contracts are proved by SPARK. Enable -gnata in
+          --  client code to enforce public API preconditions at runtime.
     end Compiler;
 
 end Cbor_Ada;

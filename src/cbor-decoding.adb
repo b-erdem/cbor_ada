@@ -633,7 +633,7 @@ package body CBOR.Decoding is
 
    function Decode_All
      (Data           : Ada.Streams.Stream_Element_Array;
-      Check_UTF8     : Boolean := False;
+      Check_UTF8     : Boolean := True;
       Max_String_Len : Ada.Streams.Stream_Element_Offset :=
         Ada.Streams.Stream_Element_Offset'Last;
       Max_Depth      : Natural := Max_Nesting_Depth)
@@ -719,6 +719,10 @@ package body CBOR.Decoding is
          Depth := Depth + 1;
          Stack (Depth) := (CK, Num_Left, Is_A_Map, 0,
                            Container);
+         --  Reset cumulative string length tracker for this
+         --  depth slot (prevents stale values from a prior
+         --  indefinite string at the same nesting level).
+         Indef_Str_Len (Depth) := 0;
       end Push;
 
       procedure Pop_And_Propagate
@@ -852,16 +856,13 @@ package body CBOR.Decoding is
         and then R.Item.Kind = CBOR.MT_Text_String
         and then R.Item.TS_Ref.Length > 0
       then
-         declare
-            TS : constant Ada.Streams
-              .Stream_Element_Array :=
-              Get_String (Data, R.Item.TS_Ref);
-         begin
-            if not Is_Valid_UTF8 (TS) then
-               Result.Status := Err_Invalid_UTF8;
-               return Result;
-            end if;
-         end;
+         if not Is_Valid_UTF8
+           (Data (R.Item.TS_Ref.First ..
+                  R.Item.TS_Ref.First + R.Item.TS_Ref.Length - 1))
+         then
+            Result.Status := Err_Invalid_UTF8;
+            return Result;
+         end if;
       end if;
 
       if Is_Container (R.Item) then
@@ -1024,16 +1025,14 @@ package body CBOR.Decoding is
               and then R.Item.Kind = CBOR.MT_Text_String
               and then R.Item.TS_Ref.Length > 0
             then
-               declare
-                  TS : constant Ada.Streams
-                    .Stream_Element_Array :=
-                    Get_String (Data, R.Item.TS_Ref);
-               begin
-                  if not Is_Valid_UTF8 (TS) then
-                     Result.Status := Err_Invalid_UTF8;
-                     return Result;
-                  end if;
-               end;
+               if not Is_Valid_UTF8
+                 (Data (R.Item.TS_Ref.First ..
+                        R.Item.TS_Ref.First
+                          + R.Item.TS_Ref.Length - 1))
+               then
+                  Result.Status := Err_Invalid_UTF8;
+                  return Result;
+               end if;
             end if;
 
             if Is_Container (R.Item) then
@@ -1056,7 +1055,7 @@ package body CBOR.Decoding is
 
    function Decode_All_Strict
      (Data           : Ada.Streams.Stream_Element_Array;
-      Check_UTF8     : Boolean := False;
+      Check_UTF8     : Boolean := True;
       Max_String_Len : Ada.Streams.Stream_Element_Offset :=
         Ada.Streams.Stream_Element_Offset'Last;
       Max_Depth      : Natural := Max_Nesting_Depth)

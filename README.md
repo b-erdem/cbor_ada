@@ -6,7 +6,7 @@ The encoder and decoder are **100% SPARK-proved** at Level 2 — mathematically 
 
 ## Key properties
 
-- **Formally verified** — 486 proof obligations, 0 unproved (CVC5/Z3)
+- **Formally verified** — 517 proof obligations, 0 unproved (CVC5/Z3)
 - **RFC 8949 compliant** — full well-formedness validation with shortest-form checking
 - **No heap allocation** — stack-only, suitable for embedded and safety-critical systems
 - **Stateless** — `pragma Pure`, no global state, no side effects
@@ -22,7 +22,7 @@ Or add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-cbor_ada = "~0.1.0"
+cbor_ada = "~0.1.1"
 ```
 
 ## Quick start
@@ -152,14 +152,10 @@ The decoder enforces all RFC 8949 well-formedness requirements:
 
 ```
 SPARK Analysis results   Total   Flow   Provers   Unproved
-Run-time Checks            322      .       322          .
-Assertions                  68      .        68          .
-Functional Contracts        46      .        46          .
-Termination                 44     41         3          .
-Total                      486     47       439          .
+Total                      517     47       470          .
 ```
 
-All 486 checks proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
+All 517 checks proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
 
 ### Running proofs locally
 
@@ -203,7 +199,7 @@ scripts/prove 2 120 all
 - `Encode_Text_String` passes through Latin-1 bytes; use `Encode_Text_String_UTF8` for pre-encoded UTF-8
 - `Decode_All` returns at most 128 items; use manual `Decode` + `Next` walking for larger structures
 - Tag content semantics (e.g., tag 0 date format) are not validated
-- UTF-8 validation is opt-in (`Check_UTF8 => True`)
+- UTF-8 validation is enabled by default; disable with `Check_UTF8 => False` when input is pre-validated
 
 ## Requirements
 

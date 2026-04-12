@@ -29,7 +29,6 @@ jobs:
 
   prove:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v4
@@ -54,10 +53,9 @@ jobs:
 
       - name: Fail on unproved checks
         run: |
-          if grep -q "Unproved" obj/gnatprove/gnatprove.out 2>/dev/null; then
-            unproved=$(grep "^Total" obj/gnatprove/gnatprove.out | grep -oP '\d+(?= \(\d+%\)$)' || echo "")
-            if [ -n "$unproved" ] && [ "$unproved" != "0" ]; then
-              echo "::error::SPARK proof has unproved checks"
-              exit 1
-            fi
+          TOTAL_LINE=$(grep "^Total" obj/gnatprove/gnatprove.out 2>/dev/null || echo "")
+          if echo "$TOTAL_LINE" | grep -q "Unproved"; then
+            echo "::error::SPARK proof has unproved checks"
+            echo "$TOTAL_LINE"
+            exit 1
           fi

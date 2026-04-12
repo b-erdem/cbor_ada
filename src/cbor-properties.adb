@@ -10,7 +10,6 @@ package body CBOR.Properties is
    package SE renames Ada.Streams;
 
    use type SE.Stream_Element;
-   use type SE.Stream_Element_Offset;
 
    procedure Lemma_Round_Trip_Unsigned (Value : CBOR.UInt64) is
       Encoded : constant SE.Stream_Element_Array :=

@@ -23,7 +23,8 @@ project Test_Cbor is
    package Compiler is
       for Switches ("Ada") use
         ("-g", "-O0", "-gnatwa", "-gnatW8",
-         "-gnatyM120", "-gnat2022");
+         "-gnatyM120", "-gnat2022",
+         "-gnato", "-gnata");
    end Compiler;
 
 end Test_Cbor;

@@ -22,12 +22,14 @@ package CBOR.Encoding is
    --  Encode unsigned integer (major type 0, full 64-bit range).
    function Encode_Unsigned
      (Value : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array;
+      return Ada.Streams.Stream_Element_Array
+     with Post => Encode_Unsigned'Result'Length in 1 .. 9;
 
    --  Encode negative integer -1 - Arg (major type 1).
    function Encode_Negative
      (Arg : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array;
+      return Ada.Streams.Stream_Element_Array
+     with Post => Encode_Negative'Result'Length in 1 .. 9;
 
    --  Encode a signed integer using the appropriate CBOR major type.
    --  Non-negative values use major type 0 (unsigned).
@@ -35,7 +37,8 @@ package CBOR.Encoding is
    --  Covers the range -(2^63) .. +(2^64 - 1) via separate paths.
    function Encode_Integer
      (Value : Interfaces.Integer_64)
-      return Ada.Streams.Stream_Element_Array;
+      return Ada.Streams.Stream_Element_Array
+     with Post => Encode_Integer'Result'Length in 1 .. 9;
 
    --  Encode definite-length byte string (major type 2).
    function Encode_Byte_String
@@ -44,11 +47,11 @@ package CBOR.Encoding is
      with Pre => Data'Length <= Max_Data_Length;
 
    --  Encode definite-length text string (major type 3).
-   --  Serializes raw Character'Pos bytes (Latin-1 byte values).
-   --  For UTF-8 content, ensure the String contains only ASCII
-   --  characters, or encode the UTF-8 bytes manually using
-   --  Encode_Byte_String and major type 3 head encoding.
-   --  Does NOT validate UTF-8.
+   --  WARNING: Serializes raw Character'Pos bytes (Latin-1).
+   --  Characters above 127 produce INVALID UTF-8 under CBOR's
+   --  major type 3 (RFC 8949 Section 3.1 requires UTF-8).
+   --  For ASCII-only strings this is safe. For non-ASCII content,
+   --  use Encode_Text_String_UTF8 with pre-encoded UTF-8 bytes.
    function Encode_Text_String
      (Text : String)
       return Ada.Streams.Stream_Element_Array
@@ -66,24 +69,28 @@ package CBOR.Encoding is
    --  Encode definite-length array header (major type 4).
    function Encode_Array
      (Count : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array;
+      return Ada.Streams.Stream_Element_Array
+     with Post => Encode_Array'Result'Length in 1 .. 9;
 
    --  Encode definite-length map header (major type 5).
    function Encode_Map
      (Count : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array;
+      return Ada.Streams.Stream_Element_Array
+     with Post => Encode_Map'Result'Length in 1 .. 9;
 
    --  Encode tag number (major type 6).
    function Encode_Tag
      (Tag_Number : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array;
+      return Ada.Streams.Stream_Element_Array
+     with Post => Encode_Tag'Result'Length in 1 .. 9;
 
    --  Encode simple value (major type 7, one or two bytes).
    --  Values 24-31 are reserved per RFC 8949 and rejected.
    function Encode_Simple
      (Value : Interfaces.Unsigned_8)
       return Ada.Streams.Stream_Element_Array
-     with Pre => Value <= 23 or else Value >= 32;
+     with Pre => Value <= 23 or else Value >= 32,
+          Post => Encode_Simple'Result'Length in 1 .. 2;
 
    --  Encode boolean (simple values 20/21).
    function Encode_Bool
@@ -101,23 +108,29 @@ package CBOR.Encoding is
       return Ada.Streams.Stream_Element_Array
      with Post => Encode_Undefined'Result'Length = 1;
 
-   --  Encode half-precision float (AI=25, raw 2 bytes).
+   --  Encode half-precision float (AI=25, raw 2 big-endian bytes).
+   --  Bytes must be in network byte order (big-endian).
    function Encode_Float_Half
      (Bytes : Ada.Streams.Stream_Element_Array)
       return Ada.Streams.Stream_Element_Array
-     with Pre => Bytes'Length = 2;
+     with Pre  => Bytes'Length = 2,
+          Post => Encode_Float_Half'Result'Length = 3;
 
-   --  Encode single-precision float (AI=26, raw 4 bytes).
+   --  Encode single-precision float (AI=26, raw 4 big-endian bytes).
+   --  Bytes must be in network byte order (big-endian).
    function Encode_Float_Single
      (Bytes : Ada.Streams.Stream_Element_Array)
       return Ada.Streams.Stream_Element_Array
-     with Pre => Bytes'Length = 4;
+     with Pre  => Bytes'Length = 4,
+          Post => Encode_Float_Single'Result'Length = 5;
 
-   --  Encode double-precision float (AI=27, raw 8 bytes).
+   --  Encode double-precision float (AI=27, raw 8 big-endian bytes).
+   --  Bytes must be in network byte order (big-endian).
    function Encode_Float_Double
      (Bytes : Ada.Streams.Stream_Element_Array)
       return Ada.Streams.Stream_Element_Array
-     with Pre => Bytes'Length = 8;
+     with Pre  => Bytes'Length = 8,
+          Post => Encode_Float_Double'Result'Length = 9;
 
    --  Encode break stop code (0xFF).
    function Encode_Break

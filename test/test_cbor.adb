@@ -1471,6 +1471,146 @@ procedure Test_Cbor is
       Check ("utf8 enc b5", 16#6F#, UInt64 (D (5)));
    end Test_Encode_Text_UTF8;
 
+   procedure Test_Reserved_AI is
+      --  AI=28 across multiple major types
+      R_U28 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#1C#]);          --  MT0 AI=28
+      R_U29 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#1D#]);          --  MT0 AI=29
+      R_U30 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#1E#]);          --  MT0 AI=30
+      R_N29 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#3D#]);          --  MT1 AI=29
+      R_B30 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#5E#]);          --  MT2 AI=30
+      R_T28 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#7C#]);          --  MT3 AI=28
+      R_A29 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#9D#]);          --  MT4 AI=29
+      R_M30 : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#BE#]);          --  MT5 AI=30
+   begin
+      TIO.Put_Line ("  Reserved AI values (28-30):");
+      Check_Status ("MT0 AI=28", CBOR.Err_Not_Well_Formed,
+                    R_U28.Status);
+      Check_Status ("MT0 AI=29", CBOR.Err_Not_Well_Formed,
+                    R_U29.Status);
+      Check_Status ("MT0 AI=30", CBOR.Err_Not_Well_Formed,
+                    R_U30.Status);
+      Check_Status ("MT1 AI=29", CBOR.Err_Not_Well_Formed,
+                    R_N29.Status);
+      Check_Status ("MT2 AI=30", CBOR.Err_Not_Well_Formed,
+                    R_B30.Status);
+      Check_Status ("MT3 AI=28", CBOR.Err_Not_Well_Formed,
+                    R_T28.Status);
+      Check_Status ("MT4 AI=29", CBOR.Err_Not_Well_Formed,
+                    R_A29.Status);
+      Check_Status ("MT5 AI=30", CBOR.Err_Not_Well_Formed,
+                    R_M30.Status);
+   end Test_Reserved_AI;
+
+   procedure Test_Indefinite_Invalid_MT is
+      --  Indefinite-length on MT 0, 1, 6 must be rejected
+      R_U : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#1F#]);          --  MT0 AI=31
+      R_N : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#3F#]);          --  MT1 AI=31
+      R_T : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#DF#]);          --  MT6 AI=31
+      --  Indefinite on MT 4, 5 should be OK
+      R_A : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#9F#]);          --  MT4 AI=31 (ok)
+      R_M : constant CBOR.Decode_Result :=
+        Dec.Decode ([16#BF#]);          --  MT5 AI=31 (ok)
+   begin
+      TIO.Put_Line ("  Indefinite-length on invalid MTs:");
+      Check_Status ("MT0 indef", CBOR.Err_Not_Well_Formed,
+                    R_U.Status);
+      Check_Status ("MT1 indef", CBOR.Err_Not_Well_Formed,
+                    R_N.Status);
+      Check_Status ("MT6 indef", CBOR.Err_Not_Well_Formed,
+                    R_T.Status);
+      Check_Status ("MT4 indef ok", CBOR.OK, R_A.Status);
+      Check_Status ("MT5 indef ok", CBOR.OK, R_M.Status);
+   end Test_Indefinite_Invalid_MT;
+
+   procedure Test_Empty_Input is
+      Empty : constant Stream_Element_Array (0 .. -1) :=
+        [others => 0];
+      R : constant CBOR.Decode_Result := Dec.Decode (Empty);
+      R_All : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Empty, Check_UTF8 => False);
+   begin
+      TIO.Put_Line ("  Empty input:");
+      Check_Status ("decode empty", CBOR.Err_Truncated,
+                    R.Status);
+      Check_Status ("decode_all empty", CBOR.Err_Truncated,
+                    R_All.Status);
+   end Test_Empty_Input;
+
+   procedure Test_Resource_Limit is
+      --  A map with count > UInt64'Last / 2 triggers Err_Resource_Limit.
+      --  Map count = 2^63 = 0x8000_0000_0000_0000 (exceeds UInt64'Last/2)
+      --  Encode: 0xBB (MT5 AI=27) + 8 big-endian bytes
+      Huge_Map : constant Stream_Element_Array :=
+        [16#BB#,
+         16#80#, 16#00#, 16#00#, 16#00#,
+         16#00#, 16#00#, 16#00#, 16#00#];
+      R : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (Huge_Map, Check_UTF8 => False);
+   begin
+      TIO.Put_Line ("  Resource limit:");
+      Check_Status ("huge map",
+                    CBOR.Err_Resource_Limit, R.Status);
+   end Test_Resource_Limit;
+
+   procedure Test_Stale_Indef_Str_Len is
+      --  Regression: two indefinite byte strings at the same depth.
+      --  Second must not carry over cumulative length from first.
+      --  Array [_ h'aabb', 0xFF, _ h'ccdd', 0xFF]
+      E : constant Stream_Element_Array :=
+        [16#82#,                         --  array(2)
+         16#5F#,                         --  indefinite byte string
+           16#42#, 16#AA#, 16#BB#,       --  chunk: 2 bytes
+         16#FF#,                         --  break
+         16#5F#,                         --  indefinite byte string
+           16#42#, 16#CC#, 16#DD#,       --  chunk: 2 bytes
+         16#FF#];                        --  break
+      R : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E, Check_UTF8 => False, Max_String_Len => 3);
+      --  Each indef string has cumulative length 2, limit is 3.
+      --  Should pass for both (not fail on second due to stale 2+2=4).
+   begin
+      TIO.Put_Line ("  Stale indef_str_len regression:");
+      Check_Status ("two indef bs ok", CBOR.OK, R.Status);
+   end Test_Stale_Indef_Str_Len;
+
+   procedure Test_Empty_Indef_Containers is
+      --  Minimal empty indefinite containers
+      E_Arr : constant Stream_Element_Array :=
+        [16#9F#, 16#FF#];              --  [_ ]
+      E_Map : constant Stream_Element_Array :=
+        [16#BF#, 16#FF#];              --  {_ }
+      E_BS  : constant Stream_Element_Array :=
+        [16#5F#, 16#FF#];              --  (_ h'')
+      E_TS  : constant Stream_Element_Array :=
+        [16#7F#, 16#FF#];              --  (_ "")
+      R_Arr : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E_Arr, Check_UTF8 => False);
+      R_Map : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E_Map, Check_UTF8 => False);
+      R_BS  : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E_BS, Check_UTF8 => False);
+      R_TS  : constant CBOR.Decode_All_Result :=
+        Dec.Decode_All (E_TS, Check_UTF8 => False);
+   begin
+      TIO.Put_Line ("  Empty indefinite containers:");
+      Check_Status ("empty indef arr", CBOR.OK, R_Arr.Status);
+      Check_Status ("empty indef map", CBOR.OK, R_Map.Status);
+      Check_Status ("empty indef bs", CBOR.OK, R_BS.Status);
+      Check_Status ("empty indef ts", CBOR.OK, R_TS.Status);
+   end Test_Empty_Indef_Containers;
+
 begin
    Rand_U64.Reset (Gen);
    TIO.Put_Line ("=== CBOR Ada Test Suite ===");
@@ -1523,6 +1663,13 @@ begin
    Test_Encode_Integer;
    Test_Max_Depth_Parameter;
    Test_Max_String_Length;
+
+   Test_Reserved_AI;
+   Test_Indefinite_Invalid_MT;
+   Test_Empty_Input;
+   Test_Resource_Limit;
+   Test_Stale_Indef_Str_Len;
+   Test_Empty_Indef_Containers;
 
    TIO.New_Line;
    TIO.Put_Line ("=== Results ===");
