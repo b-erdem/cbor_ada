@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-04-13
+
+**BREAKING**: Replace `Ada.Streams` with `System.Storage_Elements` for
+embedded/constrained runtime compatibility ([#1]).
+
+### Changed
+
+- All public API types changed from `Ada.Streams` to `System.Storage_Elements`:
+  - `Stream_Element` → `Storage_Element` (aliased as `CBOR.Byte`)
+  - `Stream_Element_Array` → `Storage_Array` (aliased as `CBOR.Byte_Array`)
+  - `Stream_Element_Offset` → `Storage_Offset` (aliased as `CBOR.SE_Offset`)
+- New `CBOR.Byte_Array` subtype provides library-level abstraction
+- Child packages (`CBOR.Encoding`, `CBOR.Decoding`) now use CBOR-level
+  types instead of directly referencing the underlying package
+
+### Migration
+
+Replace `with Ada.Streams; use Ada.Streams;` with
+`with System.Storage_Elements; use System.Storage_Elements;` in your code.
+The element types (`Storage_Element`, `Storage_Array`, `Storage_Offset`) are
+semantically identical to their `Ada.Streams` counterparts.
+
+[#1]: https://github.com/b-erdem/cbor_ada/issues/1
+
 ## [0.1.1] - 2026-04-13
 
 Safety-critical hardening release based on comprehensive security review.
@@ -69,5 +93,6 @@ Initial release.
   optional UTF-8 validation
 - No heap allocation, `pragma Pure`, zero dependencies
 
+[0.2.0]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.2.0
 [0.1.1]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.1.1
 [0.1.0]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.1.0

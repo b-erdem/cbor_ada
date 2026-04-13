@@ -7,12 +7,12 @@ package body CBOR.Properties is
 
    package Enc renames CBOR.Encoding;
    package Dec renames CBOR.Decoding;
-   package SE renames Ada.Streams;
+   package SSE renames System.Storage_Elements;
 
-   use type SE.Stream_Element;
+   use type SSE.Storage_Element;
 
    procedure Lemma_Round_Trip_Unsigned (Value : CBOR.UInt64) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Unsigned (Value);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -23,7 +23,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Unsigned;
 
    procedure Lemma_Round_Trip_Negative (Arg : CBOR.UInt64) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Negative (Arg);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -34,7 +34,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Negative;
 
    procedure Lemma_Round_Trip_Bool (Value : Boolean) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Bool (Value);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -49,7 +49,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Bool;
 
    procedure Lemma_Round_Trip_Null is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Null;
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -60,7 +60,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Null;
 
    procedure Lemma_Round_Trip_Undefined is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Undefined;
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -71,7 +71,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Undefined;
 
    procedure Lemma_Round_Trip_Simple (Value : CBOR.UInt64) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Simple (Interfaces.Unsigned_8 (Value));
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -82,7 +82,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Simple;
 
    procedure Lemma_Round_Trip_Tag (Tag_Number : CBOR.UInt64) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Tag (Tag_Number);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -93,7 +93,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Tag;
 
    procedure Lemma_Round_Trip_Array (Count : CBOR.UInt64) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Array (Count);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -104,7 +104,7 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Array;
 
    procedure Lemma_Round_Trip_Map (Count : CBOR.UInt64) is
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Map (Count);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
@@ -115,15 +115,15 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Map;
 
    procedure Lemma_Round_Trip_Float_Half
-     (B1, B2 : SE.Stream_Element)
+     (B1, B2 : SSE.Storage_Element)
    is
-      Raw     : constant SE.Stream_Element_Array :=
+      Raw     : constant SSE.Storage_Array :=
         [1 => B1, 2 => B2];
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Float_Half (Raw);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
-      Decoded : constant SE.Stream_Element_Array :=
+      Decoded : constant SSE.Storage_Array :=
         Dec.Get_String (Encoded, Result.Item.Float_Ref);
    begin
       pragma Assert (Result.Status = CBOR.OK);
@@ -135,15 +135,15 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Float_Half;
 
    procedure Lemma_Round_Trip_Float_Single
-     (B1, B2, B3, B4 : SE.Stream_Element)
+     (B1, B2, B3, B4 : SSE.Storage_Element)
    is
-      Raw     : constant SE.Stream_Element_Array :=
+      Raw     : constant SSE.Storage_Array :=
         [1 => B1, 2 => B2, 3 => B3, 4 => B4];
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Float_Single (Raw);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
-      Decoded : constant SE.Stream_Element_Array :=
+      Decoded : constant SSE.Storage_Array :=
         Dec.Get_String (Encoded, Result.Item.Float_Ref);
    begin
       pragma Assert (Result.Status = CBOR.OK);
@@ -157,16 +157,16 @@ package body CBOR.Properties is
    end Lemma_Round_Trip_Float_Single;
 
    procedure Lemma_Round_Trip_Float_Double
-     (B1, B2, B3, B4, B5, B6, B7, B8 : SE.Stream_Element)
+     (B1, B2, B3, B4, B5, B6, B7, B8 : SSE.Storage_Element)
    is
-      Raw     : constant SE.Stream_Element_Array :=
+      Raw     : constant SSE.Storage_Array :=
         [1 => B1, 2 => B2, 3 => B3, 4 => B4,
          5 => B5, 6 => B6, 7 => B7, 8 => B8];
-      Encoded : constant SE.Stream_Element_Array :=
+      Encoded : constant SSE.Storage_Array :=
         Enc.Encode_Float_Double (Raw);
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
-      Decoded : constant SE.Stream_Element_Array :=
+      Decoded : constant SSE.Storage_Array :=
         Dec.Get_String (Encoded, Result.Item.Float_Ref);
    begin
       pragma Assert (Result.Status = CBOR.OK);

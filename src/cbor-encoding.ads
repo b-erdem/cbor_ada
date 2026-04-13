@@ -11,24 +11,24 @@ package CBOR.Encoding is
 
    pragma SPARK_Mode;
 
-   use type Ada.Streams.Stream_Element_Offset;
+   use type CBOR.SE_Offset;
    use type CBOR.UInt64;
    use type Interfaces.Unsigned_8;
 
    --  Maximum input length to prevent overflow in result array sizing.
    Max_Data_Length : constant :=
-     Ada.Streams.Stream_Element_Offset'Last / 2;
+     CBOR.SE_Offset'Last / 2;
 
    --  Encode unsigned integer (major type 0, full 64-bit range).
    function Encode_Unsigned
      (Value : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Unsigned'Result'Length in 1 .. 9;
 
    --  Encode negative integer -1 - Arg (major type 1).
    function Encode_Negative
      (Arg : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Negative'Result'Length in 1 .. 9;
 
    --  Encode a signed integer using the appropriate CBOR major type.
@@ -37,13 +37,13 @@ package CBOR.Encoding is
    --  Covers the range -(2^63) .. +(2^64 - 1) via separate paths.
    function Encode_Integer
      (Value : Interfaces.Integer_64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Integer'Result'Length in 1 .. 9;
 
    --  Encode definite-length byte string (major type 2).
    function Encode_Byte_String
-     (Data : Ada.Streams.Stream_Element_Array)
-      return Ada.Streams.Stream_Element_Array
+     (Data : CBOR.Byte_Array)
+      return CBOR.Byte_Array
      with Pre => Data'Length <= Max_Data_Length;
 
    --  Encode definite-length text string (major type 3).
@@ -54,114 +54,114 @@ package CBOR.Encoding is
    --  use Encode_Text_String_UTF8 with pre-encoded UTF-8 bytes.
    function Encode_Text_String
      (Text : String)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Pre => Text'Length <= Max_Data_Length;
 
    --  Encode definite-length text string from raw UTF-8 bytes
    --  (major type 3). Use this when you have pre-encoded UTF-8
-   --  content as a Stream_Element_Array. Unlike Encode_Text_String,
+   --  content as a Byte_Array. Unlike Encode_Text_String,
    --  this avoids the Latin-1/Character'Pos ambiguity.
    function Encode_Text_String_UTF8
-     (Data : Ada.Streams.Stream_Element_Array)
-      return Ada.Streams.Stream_Element_Array
+     (Data : CBOR.Byte_Array)
+      return CBOR.Byte_Array
      with Pre => Data'Length <= Max_Data_Length;
 
    --  Encode definite-length array header (major type 4).
    function Encode_Array
      (Count : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Array'Result'Length in 1 .. 9;
 
    --  Encode definite-length map header (major type 5).
    function Encode_Map
      (Count : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Map'Result'Length in 1 .. 9;
 
    --  Encode tag number (major type 6).
    function Encode_Tag
      (Tag_Number : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Tag'Result'Length in 1 .. 9;
 
    --  Encode simple value (major type 7, one or two bytes).
    --  Values 24-31 are reserved per RFC 8949 and rejected.
    function Encode_Simple
      (Value : Interfaces.Unsigned_8)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Pre => Value <= 23 or else Value >= 32,
           Post => Encode_Simple'Result'Length in 1 .. 2;
 
    --  Encode boolean (simple values 20/21).
    function Encode_Bool
      (Value : Boolean)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Bool'Result'Length = 1;
 
    --  Encode null (simple value 22).
    function Encode_Null
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Null'Result'Length = 1;
 
    --  Encode undefined (simple value 23).
    function Encode_Undefined
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Undefined'Result'Length = 1;
 
    --  Encode half-precision float (AI=25, raw 2 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
    function Encode_Float_Half
-     (Bytes : Ada.Streams.Stream_Element_Array)
-      return Ada.Streams.Stream_Element_Array
+     (Bytes : CBOR.Byte_Array)
+      return CBOR.Byte_Array
      with Pre  => Bytes'Length = 2,
           Post => Encode_Float_Half'Result'Length = 3;
 
    --  Encode single-precision float (AI=26, raw 4 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
    function Encode_Float_Single
-     (Bytes : Ada.Streams.Stream_Element_Array)
-      return Ada.Streams.Stream_Element_Array
+     (Bytes : CBOR.Byte_Array)
+      return CBOR.Byte_Array
      with Pre  => Bytes'Length = 4,
           Post => Encode_Float_Single'Result'Length = 5;
 
    --  Encode double-precision float (AI=27, raw 8 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
    function Encode_Float_Double
-     (Bytes : Ada.Streams.Stream_Element_Array)
-      return Ada.Streams.Stream_Element_Array
+     (Bytes : CBOR.Byte_Array)
+      return CBOR.Byte_Array
      with Pre  => Bytes'Length = 8,
           Post => Encode_Float_Double'Result'Length = 9;
 
    --  Encode break stop code (0xFF).
    function Encode_Break
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Break'Result'Length = 1;
 
    --  Start indefinite-length array (0x9F).
    function Encode_Array_Start
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Array_Start'Result'Length = 1;
 
    --  Start indefinite-length map (0xBF).
    function Encode_Map_Start
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Map_Start'Result'Length = 1;
 
    --  Start indefinite-length byte string (0x5F).
    function Encode_Byte_String_Start
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Byte_String_Start'Result'Length = 1;
 
    --  Start indefinite-length text string (0x7F).
    function Encode_Text_String_Start
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Text_String_Start'Result'Length = 1;
 
 private
 
    function Head_Length
      (Val : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Offset
+      return CBOR.SE_Offset
    is
      (if Val <= 23 then 1
       elsif Val <= 255 then 2
@@ -172,7 +172,7 @@ private
    function Encode_Head
      (MT  : CBOR.Major_Type;
       Val : CBOR.UInt64)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
      with Post => Encode_Head'Result'Length = Head_Length (Val);
 
 end CBOR.Encoding;
