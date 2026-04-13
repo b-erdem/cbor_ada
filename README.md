@@ -22,7 +22,7 @@ Or add to your `alire.toml`:
 
 ```toml
 [[depends-on]]
-cbor_ada = "~0.1.1"
+cbor_ada = "~0.2.0"
 ```
 
 ## Quick start
@@ -30,7 +30,7 @@ cbor_ada = "~0.1.1"
 ### Encoding
 
 ```ada
-with Ada.Streams;  use Ada.Streams;
+with System.Storage_Elements;  use System.Storage_Elements;
 with CBOR.Encoding;
 
 procedure Example is
@@ -48,7 +48,7 @@ begin
 
    --  Containers (header + elements)
    declare
-      Output : constant Stream_Element_Array :=
+      Output : constant Storage_Array :=
         Enc.Encode_Array (3)
         & Enc.Encode_Unsigned (1)
         & Enc.Encode_Text_String ("two")
@@ -64,12 +64,12 @@ end Example;
 ### Decoding
 
 ```ada
-with Ada.Streams;  use Ada.Streams;
+with System.Storage_Elements;  use System.Storage_Elements;
 with CBOR;         use CBOR;
 with CBOR.Decoding;
 
 procedure Example is
-   Input : constant Stream_Element_Array := ...;
+   Input : constant Storage_Array := ...;
 begin
    --  Single item
    declare

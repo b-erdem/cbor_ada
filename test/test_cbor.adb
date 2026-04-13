@@ -1,7 +1,7 @@
 with CBOR;
 with CBOR.Encoding;
 with CBOR.Decoding;
-with Ada.Streams;
+with System.Storage_Elements;
 with Ada.Numerics.Discrete_Random;
 with Ada.Text_IO;
 with GNAT.OS_Lib;
@@ -9,13 +9,13 @@ with Interfaces;
 
 procedure Test_Cbor is
 
-   use type Ada.Streams.Stream_Element;
-   use type Ada.Streams.Stream_Element_Array;
-   use type Ada.Streams.Stream_Element_Offset;
+   use type System.Storage_Elements.Storage_Element;
+   use type System.Storage_Elements.Storage_Array;
+   use type System.Storage_Elements.Storage_Offset;
    use CBOR;
    use type CBOR.UInt64;
    use Interfaces;
-   use Ada.Streams;
+   use System.Storage_Elements;
 
    package Enc renames CBOR.Encoding;
    package Dec renames CBOR.Decoding;
@@ -77,8 +77,8 @@ procedure Test_Cbor is
 
    procedure Check_Enc
      (Name     : String;
-      Expected : Stream_Element_Array;
-      Actual   : Stream_Element_Array)
+      Expected : Storage_Array;
+      Actual   : Storage_Array)
    is
    begin
       if Expected'Length /= Actual'Length then
@@ -90,7 +90,7 @@ procedure Test_Cbor is
             & " got=" & Actual'Length'Image);
          return;
       end if;
-      for I in Stream_Element_Offset range
+      for I in Storage_Offset range
         0 .. Expected'Length - 1
       loop
          if Expected (Expected'First + I) /=
@@ -180,11 +180,11 @@ procedure Test_Cbor is
    end Test_RFC8949_Encoding;
 
    procedure Test_Decode_Strings is
-      E  : constant Stream_Element_Array :=
+      E  : constant Storage_Array :=
         Enc.Encode_Text_String ("hello");
       R  : constant CBOR.Decode_Result :=
         Dec.Decode (E);
-      S  : constant Stream_Element_Array :=
+      S  : constant Storage_Array :=
         Dec.Get_String (E, R.Item.TS_Ref);
    begin
       TIO.Put_Line ("  String decode:");
@@ -198,13 +198,13 @@ procedure Test_Cbor is
    end Test_Decode_Strings;
 
    procedure Test_Decode_Byte_String is
-      Raw : constant Stream_Element_Array :=
+      Raw : constant Storage_Array :=
         [16#de#, 16#ad#, 16#be#, 16#ef#];
-      E   : constant Stream_Element_Array :=
+      E   : constant Storage_Array :=
         Enc.Encode_Byte_String (Raw);
       R   : constant CBOR.Decode_Result :=
         Dec.Decode (E);
-      S   : constant Stream_Element_Array :=
+      S   : constant Storage_Array :=
         Dec.Get_String (E, R.Item.BS_Ref);
    begin
       TIO.Put_Line ("  Byte string decode:");
@@ -216,7 +216,7 @@ procedure Test_Cbor is
    end Test_Decode_Byte_String;
 
    procedure Test_Decode_Nested is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Array (2)
         & Enc.Encode_Unsigned (1)
         & Enc.Encode_Bool (True);
@@ -239,14 +239,14 @@ procedure Test_Cbor is
    end Test_Decode_Nested;
 
    procedure Test_Well_Formedness is
-      Bad1 : constant Stream_Element_Array := [16#1c#];
+      Bad1 : constant Storage_Array := [16#1c#];
       R1   : constant CBOR.Decode_Result :=
         Dec.Decode (Bad1);
-      Bad2 : constant Stream_Element_Array :=
+      Bad2 : constant Storage_Array :=
         [16#f8#, 16#10#];
       R2   : constant CBOR.Decode_Result :=
         Dec.Decode (Bad2);
-      Trunc : constant Stream_Element_Array := [16#19#];
+      Trunc : constant Storage_Array := [16#19#];
       R3    : constant CBOR.Decode_Result :=
         Dec.Decode (Trunc);
    begin
@@ -276,7 +276,7 @@ procedure Test_Cbor is
              UInt64 (R_Simple.Item.SV_Value));
 
       declare
-         Float_Bytes : constant Stream_Element_Array :=
+         Float_Bytes : constant Storage_Array :=
            [16#3c#, 16#00#];
       begin
          R_Float := Dec.Decode
@@ -312,7 +312,7 @@ procedure Test_Cbor is
    end Test_Decode_Raw;
 
    procedure Test_Decode_All_Basic is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Array (2)
         & Enc.Encode_Unsigned (1)
         & Enc.Encode_Bool (True);
@@ -337,7 +337,7 @@ procedure Test_Cbor is
    end Test_Decode_All_Basic;
 
    procedure Test_Decode_All_Nested is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Array (2)
         & Enc.Encode_Array (1)
         & Enc.Encode_Unsigned (42)
@@ -362,7 +362,7 @@ procedure Test_Cbor is
    end Test_Decode_All_Nested;
 
    procedure Test_Decode_All_Tag is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Tag (0)
         & Enc.Encode_Text_String ("2023-01-01");
       R : constant CBOR.Decode_All_Result :=
@@ -380,7 +380,7 @@ procedure Test_Cbor is
    end Test_Decode_All_Tag;
 
    procedure Test_Decode_All_Empty is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Unsigned (42);
       R : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (E);
@@ -392,7 +392,7 @@ procedure Test_Cbor is
    end Test_Decode_All_Empty;
 
    procedure Test_Decode_All_Indefinite is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Array_Start
         & Enc.Encode_Unsigned (1)
         & Enc.Encode_Unsigned (2)
@@ -417,9 +417,9 @@ procedure Test_Cbor is
    end Test_Decode_All_Indefinite;
 
    procedure Test_Decode_All_Depth is
-      Depth_16 : constant Stream_Element_Array (1 .. 17) :=
+      Depth_16 : constant Storage_Array (1 .. 17) :=
         [1 .. 16 => 16#81#, 17 => 16#00#];
-      Depth_17 : constant Stream_Element_Array (1 .. 18) :=
+      Depth_17 : constant Storage_Array (1 .. 18) :=
         [1 .. 17 => 16#81#, 18 => 16#00#];
       R16 : CBOR.Decode_All_Result;
       R17 : CBOR.Decode_All_Result;
@@ -434,7 +434,7 @@ procedure Test_Cbor is
    end Test_Decode_All_Depth;
 
    procedure Test_Decode_All_Empty_Container is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Array (2)
         & Enc.Encode_Array (0)
         & Enc.Encode_Map (0);
@@ -456,7 +456,7 @@ procedure Test_Cbor is
    end Test_Decode_All_Empty_Container;
 
    procedure Test_Decode_All_Map is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Map (2)
         & Enc.Encode_Text_String ("a")
         & Enc.Encode_Unsigned (1)
@@ -480,23 +480,23 @@ procedure Test_Cbor is
    end Test_Decode_All_Map;
 
    procedure Test_UTF8 is
-      Valid_ASCII : constant Stream_Element_Array :=
+      Valid_ASCII : constant Storage_Array :=
         [16#48#, 16#65#, 16#6C#, 16#6C#, 16#6F#];
-      Valid_2Byte : constant Stream_Element_Array :=
+      Valid_2Byte : constant Storage_Array :=
         [16#C3#, 16#A9#];
-      Valid_3Byte : constant Stream_Element_Array :=
+      Valid_3Byte : constant Storage_Array :=
         [16#E2#, 16#82#, 16#AC#];
-      Valid_4Byte : constant Stream_Element_Array :=
+      Valid_4Byte : constant Storage_Array :=
         [16#F0#, 16#9F#, 16#98#, 16#80#];
-      Invalid_Cont : constant Stream_Element_Array :=
+      Invalid_Cont : constant Storage_Array :=
         [16#C3#, 16#00#];
-      Invalid_Start : constant Stream_Element_Array :=
+      Invalid_Start : constant Storage_Array :=
         [16#80#];
-      Invalid_Overlong : constant Stream_Element_Array :=
+      Invalid_Overlong : constant Storage_Array :=
         [16#C0#, 16#80#];
-      Invalid_Surrogate : constant Stream_Element_Array :=
+      Invalid_Surrogate : constant Storage_Array :=
         [16#ED#, 16#A0#, 16#80#];
-      Empty : constant Stream_Element_Array (1 .. 0) :=
+      Empty : constant Storage_Array (1 .. 0) :=
         [];
    begin
       TIO.Put_Line ("  UTF-8 validation:");
@@ -530,9 +530,9 @@ procedure Test_Cbor is
    end Test_UTF8;
 
    procedure Test_Decode_All_UTF8 is
-      Good : constant Stream_Element_Array :=
+      Good : constant Storage_Array :=
         Enc.Encode_Text_String ("Hello");
-      Bad : constant Stream_Element_Array :=
+      Bad : constant Storage_Array :=
         [16#63#, 16#C0#, 16#80#, 16#41#];
       R_Good : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (Good, Check_UTF8 => True);
@@ -567,7 +567,7 @@ procedure Test_Cbor is
    end Test_Shortest_Form;
 
    procedure Test_Decode_Large is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         [16#1b#, 16#00#, 16#00#, 16#00#,
          16#01#, 16#00#, 16#00#, 16#00#, 16#00#];
       R : constant CBOR.Decode_Result := Dec.Decode (E);
@@ -595,12 +595,12 @@ procedure Test_Cbor is
    end Test_RFC_Appendix_F;
 
    procedure Test_Chunk_Validation is
-      BS_Chunk_OK : constant Stream_Element_Array :=
+      BS_Chunk_OK : constant Storage_Array :=
         [16#5f#, 16#42#, 16#01#, 16#02#,
          16#42#, 16#03#, 16#04#, 16#ff#];
-      BS_Chunk_Bad : constant Stream_Element_Array :=
+      BS_Chunk_Bad : constant Storage_Array :=
         [16#5f#, 16#00#, 16#ff#];
-      TS_Chunk_Bad : constant Stream_Element_Array :=
+      TS_Chunk_Bad : constant Storage_Array :=
         [16#7f#, 16#41#, 16#00#, 16#ff#];
       R_OK  : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (BS_Chunk_OK);
@@ -622,7 +622,7 @@ procedure Test_Cbor is
    end Test_Chunk_Validation;
 
    procedure Test_Break_In_Definite is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         [16#81#, 16#ff#];
       R : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (E);
@@ -633,7 +633,7 @@ procedure Test_Cbor is
    end Test_Break_In_Definite;
 
    procedure Test_Indef_Map_Odd is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         [16#bf#, 16#00#, 16#ff#];
       R : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (E);
@@ -644,7 +644,7 @@ procedure Test_Cbor is
    end Test_Indef_Map_Odd;
 
    procedure Test_Truncated_Nested is
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         [16#82#, 16#00#];
       R : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (E);
@@ -655,26 +655,26 @@ procedure Test_Cbor is
    end Test_Truncated_Nested;
 
    procedure Test_Float_Decode is
-      Half_Input : constant Stream_Element_Array :=
+      Half_Input : constant Storage_Array :=
         [16#F9#, 16#3C#, 16#00#];
       R_Half : constant CBOR.Decode_Result :=
         Dec.Decode (Half_Input);
-      Half_Bytes : constant Stream_Element_Array :=
+      Half_Bytes : constant Storage_Array :=
         Dec.Get_String (Half_Input, R_Half.Item.Float_Ref);
 
-      Single_Input : constant Stream_Element_Array :=
+      Single_Input : constant Storage_Array :=
         [16#FA#, 16#3F#, 16#80#, 16#00#, 16#00#];
       R_Single : constant CBOR.Decode_Result :=
         Dec.Decode (Single_Input);
-      Single_Bytes : constant Stream_Element_Array :=
+      Single_Bytes : constant Storage_Array :=
         Dec.Get_String (Single_Input, R_Single.Item.Float_Ref);
 
-      Double_Input : constant Stream_Element_Array :=
+      Double_Input : constant Storage_Array :=
         [16#FB#, 16#3F#, 16#F0#, 16#00#, 16#00#,
          16#00#, 16#00#, 16#00#, 16#00#];
       R_Double : constant CBOR.Decode_Result :=
         Dec.Decode (Double_Input);
-      Double_Bytes : constant Stream_Element_Array :=
+      Double_Bytes : constant Storage_Array :=
         Dec.Get_String (Double_Input, R_Double.Item.Float_Ref);
    begin
       TIO.Put_Line ("  Float decode:");
@@ -703,7 +703,7 @@ procedure Test_Cbor is
    end Test_Float_Decode;
 
    procedure Test_Top_Level_Break is
-      E : constant Stream_Element_Array := [16#FF#];
+      E : constant Storage_Array := [16#FF#];
       R_Dec : constant CBOR.Decode_Result :=
         Dec.Decode (E);
       R_All : constant CBOR.Decode_All_Result :=
@@ -717,10 +717,10 @@ procedure Test_Cbor is
    end Test_Top_Level_Break;
 
    procedure Test_Empty_Strings is
-      BS_Empty : constant Stream_Element_Array := [16#40#];
+      BS_Empty : constant Storage_Array := [16#40#];
       R_BS : constant CBOR.Decode_Result :=
         Dec.Decode (BS_Empty);
-      TS_Empty : constant Stream_Element_Array := [16#60#];
+      TS_Empty : constant Storage_Array := [16#60#];
       R_TS : constant CBOR.Decode_Result :=
         Dec.Decode (TS_Empty);
    begin
@@ -738,7 +738,7 @@ procedure Test_Cbor is
              UInt64 (R_TS.Item.TS_Ref.Length));
 
       declare
-         Empty_Bytes : constant Stream_Element_Array :=
+         Empty_Bytes : constant Storage_Array :=
            Dec.Get_String (BS_Empty, R_BS.Item.BS_Ref);
       begin
          Check ("empty get len", 0,
@@ -747,11 +747,11 @@ procedure Test_Cbor is
    end Test_Empty_Strings;
 
    procedure Test_Decode_All_Strict is
-      Exact : constant Stream_Element_Array :=
+      Exact : constant Storage_Array :=
         Enc.Encode_Unsigned (42);
       R_Exact : constant CBOR.Decode_All_Result :=
         Dec.Decode_All_Strict (Exact);
-      Trailing : constant Stream_Element_Array :=
+      Trailing : constant Storage_Array :=
         Enc.Encode_Unsigned (42) & [16#00#];
       R_Trailing : constant CBOR.Decode_All_Result :=
         Dec.Decode_All_Strict (Trailing);
@@ -781,7 +781,7 @@ procedure Test_Cbor is
       TIO.Put_Line ("  Round-trip unsigned:");
       for I in Edge'Range loop
          declare
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Unsigned (Edge (I));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -797,7 +797,7 @@ procedure Test_Cbor is
       for I in 1 .. 20 loop
          declare
             V : constant UInt64 := Rand_U64.Random (Gen);
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Unsigned (V);
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -815,7 +815,7 @@ procedure Test_Cbor is
       TIO.Put_Line ("  Round-trip negative:");
       for I in Edge'Range loop
          declare
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Negative (Edge (I));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -831,7 +831,7 @@ procedure Test_Cbor is
       for I in 1 .. 20 loop
          declare
             V : constant UInt64 := Rand_U64.Random (Gen);
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Negative (V);
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -845,9 +845,9 @@ procedure Test_Cbor is
    begin
       TIO.Put_Line ("  Round-trip simple types:");
       declare
-         Rt : constant Stream_Element_Array :=
+         Rt : constant Storage_Array :=
            Enc.Encode_Bool (True);
-         Rf : constant Stream_Element_Array :=
+         Rf : constant Storage_Array :=
            Enc.Encode_Bool (False);
          DT : constant CBOR.Decode_Result := Dec.Decode (Rt);
          DF : constant CBOR.Decode_Result := Dec.Decode (Rf);
@@ -858,14 +858,14 @@ procedure Test_Cbor is
                 UInt64 (DF.Item.SV_Value));
       end;
       declare
-         E : constant Stream_Element_Array := Enc.Encode_Null;
+         E : constant Storage_Array := Enc.Encode_Null;
          R : constant CBOR.Decode_Result := Dec.Decode (E);
       begin
          Check ("rt_null sv", 22,
                 UInt64 (R.Item.SV_Value));
       end;
       declare
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Undefined;
          R : constant CBOR.Decode_Result := Dec.Decode (E);
       begin
@@ -874,7 +874,7 @@ procedure Test_Cbor is
       end;
       for SV in 0 .. 23 loop
          declare
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Simple (Unsigned_8 (SV));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -885,7 +885,7 @@ procedure Test_Cbor is
       end loop;
       for SV in 32 .. 255 loop
          declare
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Simple (Unsigned_8 (SV));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -904,7 +904,7 @@ procedure Test_Cbor is
       TIO.Put_Line ("  Round-trip tag:");
       for I in Edge'Range loop
          declare
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Tag (Edge (I));
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -916,7 +916,7 @@ procedure Test_Cbor is
       for I in 1 .. 20 loop
          declare
             V : constant UInt64 := Rand_U64.Random (Gen);
-            E : constant Stream_Element_Array :=
+            E : constant Storage_Array :=
               Enc.Encode_Tag (V);
             R : constant CBOR.Decode_Result :=
               Dec.Decode (E);
@@ -927,26 +927,26 @@ procedure Test_Cbor is
    end Test_Round_Trip_Tag;
 
    procedure Test_Round_Trip_Strings is
-      Lengths : constant array (1 .. 5) of Stream_Element_Offset :=
+      Lengths : constant array (1 .. 5) of Storage_Offset :=
         [0, 1, 23, 24, 256];
    begin
       TIO.Put_Line ("  Round-trip strings:");
       for J in Lengths'Range loop
          declare
-            Len : constant Stream_Element_Offset := Lengths (J);
-            Raw : Stream_Element_Array (1 .. Len) :=
+            Len : constant Storage_Offset := Lengths (J);
+            Raw : Storage_Array (1 .. Len) :=
               [others => 0];
          begin
             for I in 1 .. Len loop
-               Raw (I) := Stream_Element
+               Raw (I) := Storage_Element
                  ((I * 37 + 13) mod 256);
             end loop;
             declare
-               E : constant Stream_Element_Array :=
+               E : constant Storage_Array :=
                  Enc.Encode_Byte_String (Raw);
                R : constant CBOR.Decode_Result :=
                  Dec.Decode (E);
-               D : constant Stream_Element_Array :=
+               D : constant Storage_Array :=
                  Dec.Get_String (E, R.Item.BS_Ref);
             begin
                Check ("rt_bs len" & Len'Image,
@@ -963,7 +963,7 @@ procedure Test_Cbor is
       end loop;
       for J in Lengths'Range loop
          declare
-            Len  : constant Stream_Element_Offset := Lengths (J);
+            Len  : constant Storage_Offset := Lengths (J);
             Text : String (1 .. Integer (Len)) :=
               [others => 'A'];
          begin
@@ -972,11 +972,11 @@ procedure Test_Cbor is
                  Character'Val ((I * 37 + 13) mod 95 + 32);
             end loop;
             declare
-               E : constant Stream_Element_Array :=
+               E : constant Storage_Array :=
                  Enc.Encode_Text_String (Text);
                R : constant CBOR.Decode_Result :=
                  Dec.Decode (E);
-               D : constant Stream_Element_Array :=
+               D : constant Storage_Array :=
                  Dec.Get_String (E, R.Item.TS_Ref);
             begin
                Check ("rt_ts len" & Len'Image,
@@ -1000,12 +1000,12 @@ procedure Test_Cbor is
    begin
       TIO.Put_Line ("  Round-trip floats:");
       declare
-         Half_In : constant Stream_Element_Array :=
+         Half_In : constant Storage_Array :=
            [16#3C#, 16#00#];
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Float_Half (Half_In);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
-         D : constant Stream_Element_Array :=
+         D : constant Storage_Array :=
            Dec.Get_String (E, R.Item.Float_Ref);
       begin
          Check ("rt_f16 sv", 25,
@@ -1016,12 +1016,12 @@ procedure Test_Cbor is
          Check ("rt_f16 b2", 16#00#, UInt64 (D (2)));
       end;
       declare
-         Single_In : constant Stream_Element_Array :=
+         Single_In : constant Storage_Array :=
            [16#3F#, 16#80#, 16#00#, 16#00#];
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Float_Single (Single_In);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
-         D : constant Stream_Element_Array :=
+         D : constant Storage_Array :=
            Dec.Get_String (E, R.Item.Float_Ref);
       begin
          Check ("rt_f32 sv", 26,
@@ -1032,13 +1032,13 @@ procedure Test_Cbor is
          Check ("rt_f32 b4", 16#00#, UInt64 (D (4)));
       end;
       declare
-         Double_In : constant Stream_Element_Array :=
+         Double_In : constant Storage_Array :=
            [16#3F#, 16#F0#, 16#00#, 16#00#,
             16#00#, 16#00#, 16#00#, 16#00#];
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Float_Double (Double_In);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
-         D : constant Stream_Element_Array :=
+         D : constant Storage_Array :=
            Dec.Get_String (E, R.Item.Float_Ref);
       begin
          Check ("rt_f64 sv", 27,
@@ -1059,11 +1059,11 @@ procedure Test_Cbor is
       for J in Counts'Range loop
          declare
             Cnt : constant UInt64 := Counts (J);
-            EA  : constant Stream_Element_Array :=
+            EA  : constant Storage_Array :=
               Enc.Encode_Array (Cnt);
             RA  : constant CBOR.Decode_Result :=
               Dec.Decode (EA);
-            EM  : constant Stream_Element_Array :=
+            EM  : constant Storage_Array :=
               Enc.Encode_Map (Cnt);
             RM  : constant CBOR.Decode_Result :=
               Dec.Decode (EM);
@@ -1075,7 +1075,7 @@ procedure Test_Cbor is
          end;
       end loop;
       declare
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Array (3)
            & Enc.Encode_Unsigned (1)
            & Enc.Encode_Text_String ("hi")
@@ -1105,11 +1105,11 @@ procedure Test_Cbor is
 
    procedure Test_Too_Many_Items is
       --  Build an array of 128 unsigned integers (hitting Max_Decode_Items)
-      Hdr : constant Stream_Element_Array :=
+      Hdr : constant Storage_Array :=
         Enc.Encode_Array (128);
-      Buf : Stream_Element_Array (1 .. Hdr'Length + 128) :=
+      Buf : Storage_Array (1 .. Hdr'Length + 128) :=
         [others => 0];
-      Pos : Stream_Element_Offset := 1;
+      Pos : Storage_Offset := 1;
       R128 : CBOR.Decode_All_Result;
    begin
       TIO.Put_Line ("  Too many items:");
@@ -1128,11 +1128,11 @@ procedure Test_Cbor is
 
       --  Verify that 127 elements (128 total items) works
       declare
-         Hdr3 : constant Stream_Element_Array :=
+         Hdr3 : constant Storage_Array :=
            Enc.Encode_Array (127);
-         Buf3 : Stream_Element_Array
+         Buf3 : Storage_Array
            (1 .. Hdr3'Length + 127) := [others => 0];
-         P3 : Stream_Element_Offset := 1;
+         P3 : Storage_Offset := 1;
          R127 : CBOR.Decode_All_Result;
       begin
          for I in Hdr3'Range loop
@@ -1149,7 +1149,7 @@ procedure Test_Cbor is
 
    procedure Test_Nested_Indefinite is
       --  Indefinite array containing indefinite map with one k-v pair
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Array_Start            -- 0x9F
         & Enc.Encode_Map_Start            -- 0xBF
         & Enc.Encode_Unsigned (1)         -- key
@@ -1183,7 +1183,7 @@ procedure Test_Cbor is
 
    procedure Test_Decode_Pos_Edge is
       --  Two single-byte items: [10, 5], decode second via Pos
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Unsigned (10)
         & Enc.Encode_Unsigned (5);
       R1 : constant CBOR.Decode_Result := Dec.Decode (E);
@@ -1204,7 +1204,7 @@ procedure Test_Cbor is
 
    procedure Test_Indef_String_Success is
       --  Indefinite byte string with two chunks, decoded successfully
-      BS : constant Stream_Element_Array :=
+      BS : constant Storage_Array :=
         [16#5F#,                           -- indef byte string start
          16#42#, 16#CA#, 16#FE#,           -- chunk: 2 bytes
          16#43#, 16#DE#, 16#AD#, 16#00#,   -- chunk: 3 bytes
@@ -1223,7 +1223,7 @@ procedure Test_Cbor is
       Check ("ibs[1] len", 2,
              UInt64 (R.Items (2).BS_Ref.Length));
       declare
-         C1 : constant Stream_Element_Array :=
+         C1 : constant Storage_Array :=
            Dec.Get_String (BS, R.Items (2).BS_Ref);
       begin
          Check ("ibs[1] b1", 16#CA#, UInt64 (C1 (1)));
@@ -1233,7 +1233,7 @@ procedure Test_Cbor is
       Check ("ibs[2] len", 3,
              UInt64 (R.Items (3).BS_Ref.Length));
       declare
-         C2 : constant Stream_Element_Array :=
+         C2 : constant Storage_Array :=
            Dec.Get_String (BS, R.Items (3).BS_Ref);
       begin
          Check ("ibs[2] b1", 16#DE#, UInt64 (C2 (1)));
@@ -1247,7 +1247,7 @@ procedure Test_Cbor is
 
    procedure Test_TS_With_BS_Chunks is
       --  Indefinite text string with byte string chunks (wrong type)
-      Bad : constant Stream_Element_Array :=
+      Bad : constant Storage_Array :=
         [16#7F#,                        -- indef text string start
          16#42#, 16#41#, 16#42#,        -- byte string chunk (wrong!)
          16#FF#];                        -- break
@@ -1287,7 +1287,7 @@ procedure Test_Cbor is
                  Enc.Encode_Integer (-1000));
       --  Round-trip: positive
       declare
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Integer (42);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
       begin
@@ -1296,7 +1296,7 @@ procedure Test_Cbor is
       end;
       --  Round-trip: negative
       declare
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Integer (-10);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
       begin
@@ -1307,7 +1307,7 @@ procedure Test_Cbor is
       end;
       --  Integer_64'First = -2^63, Arg = 2^63 - 1
       declare
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Integer (Interfaces.Integer_64'First);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
       begin
@@ -1320,7 +1320,7 @@ procedure Test_Cbor is
       end;
       --  Integer_64'Last = 2^63 - 1
       declare
-         E : constant Stream_Element_Array :=
+         E : constant Storage_Array :=
            Enc.Encode_Integer (Interfaces.Integer_64'Last);
          R : constant CBOR.Decode_Result := Dec.Decode (E);
       begin
@@ -1333,7 +1333,7 @@ procedure Test_Cbor is
 
    procedure Test_Max_Depth_Parameter is
       --  8 levels of nesting: [[[[[[[[0]]]]]]]]
-      Depth_8 : constant Stream_Element_Array (1 .. 9) :=
+      Depth_8 : constant Storage_Array (1 .. 9) :=
         [1 .. 8 => 16#81#, 9 => 16#00#];
    begin
       TIO.Put_Line ("  Max_Depth parameter:");
@@ -1355,7 +1355,7 @@ procedure Test_Cbor is
       end;
       --  Max_Depth = 1: only flat items allowed
       declare
-         Flat : constant Stream_Element_Array :=
+         Flat : constant Storage_Array :=
            Enc.Encode_Unsigned (42);
          R : constant CBOR.Decode_All_Result :=
            Dec.Decode_All (Flat, Max_Depth => 1);
@@ -1376,7 +1376,7 @@ procedure Test_Cbor is
       --  Indefinite byte string: 0x5F + two 3-byte chunks + break
       --  Each chunk is 3 bytes (within a limit of 5), but cumulative
       --  is 6 bytes (exceeds limit of 5).
-      Indef_BS : constant Stream_Element_Array :=
+      Indef_BS : constant Storage_Array :=
         [16#5F#,                              --  indefinite byte string
          16#43#, 16#01#, 16#02#, 16#03#,      --  chunk: 3 bytes
          16#43#, 16#04#, 16#05#, 16#06#,      --  chunk: 3 bytes
@@ -1392,7 +1392,7 @@ procedure Test_Cbor is
       R_OK2 : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (Indef_BS, Max_String_Len => 100);
       --  Same for indefinite text string
-      Indef_TS : constant Stream_Element_Array :=
+      Indef_TS : constant Storage_Array :=
         [16#7F#,                              --  indefinite text string
          16#63#, 16#61#, 16#62#, 16#63#,      --  chunk: "abc" (3 bytes)
          16#62#, 16#64#, 16#65#,              --  chunk: "de" (2 bytes)
@@ -1419,7 +1419,7 @@ procedure Test_Cbor is
 
    procedure Test_Max_String_Length is
       --  A 5-byte text string
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Text_String ("hello");
       --  With limit of 10: should pass
       R_OK : constant CBOR.Decode_All_Result :=
@@ -1428,7 +1428,7 @@ procedure Test_Cbor is
       R_Fail : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (E, Max_String_Len => 4);
       --  Byte string
-      BS : constant Stream_Element_Array :=
+      BS : constant Storage_Array :=
         Enc.Encode_Byte_String ([16#01#, 16#02#, 16#03#]);
       R_BS_OK : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (BS, Max_String_Len => 3);
@@ -1453,12 +1453,12 @@ procedure Test_Cbor is
 
    procedure Test_Encode_Text_UTF8 is
       --  Test the new Encode_Text_String_UTF8 function
-      UTF8_Bytes : constant Stream_Element_Array :=
+      UTF8_Bytes : constant Storage_Array :=
         [16#48#, 16#65#, 16#6C#, 16#6C#, 16#6F#];  -- "Hello"
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         Enc.Encode_Text_String_UTF8 (UTF8_Bytes);
       R : constant CBOR.Decode_Result := Dec.Decode (E);
-      D : constant Stream_Element_Array :=
+      D : constant Storage_Array :=
         Dec.Get_String (E, R.Item.TS_Ref);
    begin
       TIO.Put_Line ("  Encode_Text_String_UTF8:");
@@ -1535,7 +1535,7 @@ procedure Test_Cbor is
    end Test_Indefinite_Invalid_MT;
 
    procedure Test_Empty_Input is
-      Empty : constant Stream_Element_Array (0 .. -1) :=
+      Empty : constant Storage_Array (0 .. -1) :=
         [others => 0];
       R : constant CBOR.Decode_Result := Dec.Decode (Empty);
       R_All : constant CBOR.Decode_All_Result :=
@@ -1552,7 +1552,7 @@ procedure Test_Cbor is
       --  A map with count > UInt64'Last / 2 triggers Err_Resource_Limit.
       --  Map count = 2^63 = 0x8000_0000_0000_0000 (exceeds UInt64'Last/2)
       --  Encode: 0xBB (MT5 AI=27) + 8 big-endian bytes
-      Huge_Map : constant Stream_Element_Array :=
+      Huge_Map : constant Storage_Array :=
         [16#BB#,
          16#80#, 16#00#, 16#00#, 16#00#,
          16#00#, 16#00#, 16#00#, 16#00#];
@@ -1568,7 +1568,7 @@ procedure Test_Cbor is
       --  Regression: two indefinite byte strings at the same depth.
       --  Second must not carry over cumulative length from first.
       --  Array [_ h'aabb', 0xFF, _ h'ccdd', 0xFF]
-      E : constant Stream_Element_Array :=
+      E : constant Storage_Array :=
         [16#82#,                         --  array(2)
          16#5F#,                         --  indefinite byte string
            16#42#, 16#AA#, 16#BB#,       --  chunk: 2 bytes
@@ -1587,13 +1587,13 @@ procedure Test_Cbor is
 
    procedure Test_Empty_Indef_Containers is
       --  Minimal empty indefinite containers
-      E_Arr : constant Stream_Element_Array :=
+      E_Arr : constant Storage_Array :=
         [16#9F#, 16#FF#];              --  [_ ]
-      E_Map : constant Stream_Element_Array :=
+      E_Map : constant Storage_Array :=
         [16#BF#, 16#FF#];              --  {_ }
-      E_BS  : constant Stream_Element_Array :=
+      E_BS  : constant Storage_Array :=
         [16#5F#, 16#FF#];              --  (_ h'')
-      E_TS  : constant Stream_Element_Array :=
+      E_TS  : constant Storage_Array :=
         [16#7F#, 16#FF#];              --  (_ "")
       R_Arr : constant CBOR.Decode_All_Result :=
         Dec.Decode_All (E_Arr, Check_UTF8 => False);

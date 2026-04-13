@@ -11,7 +11,7 @@ package body CBOR.Decoding is
 
    function Head_Size
      (AI : Unsigned_8)
-      return Ada.Streams.Stream_Element_Offset
+      return CBOR.SE_Offset
    is
    begin
       if AI <= 23 then
@@ -30,7 +30,7 @@ package body CBOR.Decoding is
    end Head_Size;
 
    Max_SE_Length : constant UInt64 :=
-     UInt64 (Ada.Streams.Stream_Element_Offset'Last);
+     UInt64 (CBOR.SE_Offset'Last);
 
    function Is_Shortest
      (AI  : Unsigned_8;
@@ -54,8 +54,8 @@ package body CBOR.Decoding is
    end Is_Shortest;
 
    function Has_Head
-     (Data : Ada.Streams.Stream_Element_Array;
-      Pos  : Ada.Streams.Stream_Element_Offset;
+     (Data : CBOR.Byte_Array;
+      Pos  : CBOR.SE_Offset;
       AI   : Unsigned_8)
       return Boolean
    is
@@ -73,8 +73,8 @@ package body CBOR.Decoding is
                and then Data'Last <= Max_Data_Length;
 
    function Read_Arg
-     (Data : Ada.Streams.Stream_Element_Array;
-      Pos  : Ada.Streams.Stream_Element_Offset;
+     (Data : CBOR.Byte_Array;
+      Pos  : CBOR.SE_Offset;
       AI   : Unsigned_8)
       return UInt64
      with Pre => Data'First >= 0
@@ -82,17 +82,13 @@ package body CBOR.Decoding is
                  and then Has_Head (Data, Pos, AI)
                  and then (case AI is
                               when 24 =>
-                                 Pos <= Ada.Streams
-                                   .Stream_Element_Offset'Last - 1,
+                                 Pos <= CBOR.SE_Offset'Last - 1,
                               when 25 =>
-                                 Pos <= Ada.Streams
-                                   .Stream_Element_Offset'Last - 2,
+                                 Pos <= CBOR.SE_Offset'Last - 2,
                               when 26 =>
-                                 Pos <= Ada.Streams
-                                   .Stream_Element_Offset'Last - 4,
+                                 Pos <= CBOR.SE_Offset'Last - 4,
                               when 27 =>
-                                 Pos <= Ada.Streams
-                                   .Stream_Element_Offset'Last - 8,
+                                 Pos <= CBOR.SE_Offset'Last - 8,
                               when others =>
                                  True)
    is
@@ -132,8 +128,8 @@ package body CBOR.Decoding is
 
    --  Internal decode starting at position P.
    function Decode_At
-     (Data : Ada.Streams.Stream_Element_Array;
-      P    : Ada.Streams.Stream_Element_Offset)
+     (Data : CBOR.Byte_Array;
+      P    : CBOR.SE_Offset)
       return Decode_Result
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length
@@ -215,7 +211,7 @@ package body CBOR.Decoding is
          end if;
 
           declare
-              Item_End : constant Ada.Streams.Stream_Element_Offset :=
+              Item_End : constant CBOR.SE_Offset :=
                 (case AI is
                     when 0 .. 23  => P,
                     when 24       => P + 1,
@@ -280,8 +276,8 @@ package body CBOR.Decoding is
                                 Next    => P);
                      end if;
                      declare
-                        SLen : constant Ada.Streams.Stream_Element_Offset :=
-                          Ada.Streams.Stream_Element_Offset (Len);
+                        SLen : constant CBOR.SE_Offset :=
+                          CBOR.SE_Offset (Len);
                      begin
                         if SLen > 0
                           and then (Item_End >= Data'Last
@@ -292,8 +288,7 @@ package body CBOR.Decoding is
                                    Next    => P);
                         end if;
                         declare
-                           Data_End : constant Ada.Streams
-                             .Stream_Element_Offset :=
+                           Data_End : constant CBOR.SE_Offset :=
                              (if SLen = 0 then
                                  Item_End
                               else
@@ -329,9 +324,8 @@ package body CBOR.Decoding is
                                  Next    => P);
                       end if;
                      declare
-                        SLen : constant Ada.Streams
-                          .Stream_Element_Offset :=
-                          Ada.Streams.Stream_Element_Offset (Len);
+                        SLen : constant CBOR.SE_Offset :=
+                          CBOR.SE_Offset (Len);
                      begin
                         if SLen > 0
                           and then (Item_End >= Data'Last
@@ -342,8 +336,7 @@ package body CBOR.Decoding is
                                    Next    => P);
                         end if;
                         declare
-                           Data_End : constant Ada.Streams
-                             .Stream_Element_Offset :=
+                           Data_End : constant CBOR.SE_Offset :=
                              (if SLen = 0 then
                                  Item_End
                               else
@@ -476,7 +469,7 @@ package body CBOR.Decoding is
    end Decode_At;
 
    function Decode
-     (Data : Ada.Streams.Stream_Element_Array)
+     (Data : CBOR.Byte_Array)
       return Decode_Result
    is
    begin
@@ -489,8 +482,8 @@ package body CBOR.Decoding is
    end Decode;
 
    function Decode
-     (Data : Ada.Streams.Stream_Element_Array;
-      Pos  : Ada.Streams.Stream_Element_Offset)
+     (Data : CBOR.Byte_Array;
+      Pos  : CBOR.SE_Offset)
       return Decode_Result
    is
    begin
@@ -498,11 +491,11 @@ package body CBOR.Decoding is
    end Decode;
 
    function Get_String
-     (Data : Ada.Streams.Stream_Element_Array;
+     (Data : CBOR.Byte_Array;
       Ref  : String_Ref)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
    is
-      Result : Ada.Streams.Stream_Element_Array
+      Result : CBOR.Byte_Array
         (1 .. Ref.Length) := (others => 0);
    begin
       for I in 1 .. Ref.Length loop
@@ -514,10 +507,10 @@ package body CBOR.Decoding is
    end Get_String;
 
    function Is_Valid_UTF8
-     (Data : Ada.Streams.Stream_Element_Array)
+     (Data : CBOR.Byte_Array)
       return Boolean
    is
-      I : Ada.Streams.Stream_Element_Offset := Data'First;
+      I : CBOR.SE_Offset := Data'First;
    begin
       while I <= Data'Last loop
          pragma Loop_Variant (Increases => I);
@@ -632,10 +625,10 @@ package body CBOR.Decoding is
    end Is_Valid_UTF8;
 
    function Decode_All
-     (Data           : Ada.Streams.Stream_Element_Array;
+     (Data           : CBOR.Byte_Array;
       Check_UTF8     : Boolean := True;
-      Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last;
+      Max_String_Len : CBOR.SE_Offset :=
+        CBOR.SE_Offset'Last;
       Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
    is
@@ -662,11 +655,11 @@ package body CBOR.Decoding is
        --  Cumulative byte count for indefinite string chunks at each
        --  nesting level.  Tracked separately to avoid proof issues.
        Indef_Str_Len : array (1 .. Max_Nesting_Depth)
-         of Ada.Streams.Stream_Element_Offset := [others => 0];
+         of CBOR.SE_Offset := [others => 0];
        Depth : Depth_Count := 0;
 
        Result : Decode_All_Result;
-       Pos    : Ada.Streams.Stream_Element_Offset;
+       Pos    : CBOR.SE_Offset;
 
       function Raw_AI
         (Item : CBOR.CBOR_Item)
@@ -906,7 +899,7 @@ package body CBOR.Decoding is
                SV_Value   => 31,
                Float_Ref  => CBOR.Null_Ref);
             pragma Assert
-              (Pos < Ada.Streams.Stream_Element_Offset'Last);
+              (Pos < CBOR.SE_Offset'Last);
             Pos := Pos + 1;
             Result.Next := Pos;
             Depth := Depth - 1;
@@ -950,7 +943,7 @@ package body CBOR.Decoding is
             then
                declare
                   Chunk_Len :
-                    constant Ada.Streams.Stream_Element_Offset :=
+                    constant CBOR.SE_Offset :=
                     (if R.Item.Kind = CBOR.MT_Byte_String then
                         R.Item.BS_Ref.Length
                      elsif R.Item.Kind = CBOR.MT_Text_String then
@@ -1054,10 +1047,10 @@ package body CBOR.Decoding is
     end Decode_All;
 
    function Decode_All_Strict
-     (Data           : Ada.Streams.Stream_Element_Array;
+     (Data           : CBOR.Byte_Array;
       Check_UTF8     : Boolean := True;
-      Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last;
+      Max_String_Len : CBOR.SE_Offset :=
+        CBOR.SE_Offset'Last;
       Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
    is

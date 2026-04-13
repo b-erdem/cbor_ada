@@ -6,14 +6,14 @@
 --  original value. These are proof-only procedures (ghost) and
 --  have no runtime cost.
 
-with Ada.Streams;
+with System.Storage_Elements;
 with Interfaces;
 with CBOR.Encoding;
 with CBOR.Decoding;
 
 use type Interfaces.Unsigned_64;
 use type Interfaces.Unsigned_8;
-use type Ada.Streams.Stream_Element_Offset;
+use type System.Storage_Elements.Storage_Offset;
 
 package CBOR.Properties is
 
@@ -123,7 +123,7 @@ package CBOR.Properties is
                      and then R.Item.Map_Count = Count);
 
    procedure Lemma_Round_Trip_Float_Half
-     (B1, B2 : Ada.Streams.Stream_Element)
+     (B1, B2 : System.Storage_Elements.Storage_Element)
      with Ghost,
           Post => (declare
                      R : constant CBOR.Decode_Result :=
@@ -136,7 +136,7 @@ package CBOR.Properties is
                      and then R.Item.Float_Ref.Length = 2);
 
    procedure Lemma_Round_Trip_Float_Single
-     (B1, B2, B3, B4 : Ada.Streams.Stream_Element)
+     (B1, B2, B3, B4 : System.Storage_Elements.Storage_Element)
      with Ghost,
           Post => (declare
                      R : constant CBOR.Decode_Result :=
@@ -150,7 +150,7 @@ package CBOR.Properties is
                      and then R.Item.Float_Ref.Length = 4);
 
    procedure Lemma_Round_Trip_Float_Double
-     (B1, B2, B3, B4, B5, B6, B7, B8 : Ada.Streams.Stream_Element)
+     (B1, B2, B3, B4, B5, B6, B7, B8 : System.Storage_Elements.Storage_Element)
      with Ghost,
           Post => (declare
                      R : constant CBOR.Decode_Result :=

@@ -19,14 +19,14 @@ package CBOR.Decoding is
 
    pragma SPARK_Mode;
 
-   use type Ada.Streams.Stream_Element_Offset;
+   use type CBOR.SE_Offset;
 
-   Max_Data_Length : constant Ada.Streams.Stream_Element_Offset :=
-     Ada.Streams.Stream_Element_Offset'Last / 2;
+   Max_Data_Length : constant CBOR.SE_Offset :=
+     CBOR.SE_Offset'Last / 2;
 
    --  True when Ref points to a valid slice within Data.
    function Valid_String_Ref
-     (Data : Ada.Streams.Stream_Element_Array;
+     (Data : CBOR.Byte_Array;
       Ref  : String_Ref)
       return Boolean
    is
@@ -42,7 +42,7 @@ package CBOR.Decoding is
 
    --  True when all string-like refs in Item are valid for Data.
    function Valid_Item_Refs
-     (Data : Ada.Streams.Stream_Element_Array;
+     (Data : CBOR.Byte_Array;
       Item : CBOR_Item)
       return Boolean
    is
@@ -62,7 +62,7 @@ package CBOR.Decoding is
    --  (Data'Last + 1 when the entire buffer is consumed).
    --  Standalone break (0xFF) is rejected as Err_Not_Well_Formed.
    function Decode
-     (Data : Ada.Streams.Stream_Element_Array)
+     (Data : CBOR.Byte_Array)
       return Decode_Result
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length,
@@ -84,8 +84,8 @@ package CBOR.Decoding is
    --  Same semantics as Decode (Data) — header only, no child
    --  validation.  Pos must be a valid index in Data'Range.
    function Decode
-     (Data : Ada.Streams.Stream_Element_Array;
-      Pos  : Ada.Streams.Stream_Element_Offset)
+     (Data : CBOR.Byte_Array;
+      Pos  : CBOR.SE_Offset)
       return Decode_Result
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length
@@ -107,15 +107,15 @@ package CBOR.Decoding is
    --  Return the head size in bytes for a given additional info.
    function Head_Size
      (AI : Interfaces.Unsigned_8)
-      return Ada.Streams.Stream_Element_Offset
+      return CBOR.SE_Offset
      with Post => Head_Size'Result in 1 | 2 | 3 | 5 | 9;
 
    --  Extract byte/text string content from Data using a String_Ref.
    --  Returns a new array with bounds 1 .. Ref.Length (empty if Length = 0).
    function Get_String
-     (Data : Ada.Streams.Stream_Element_Array;
+     (Data : CBOR.Byte_Array;
       Ref  : String_Ref)
-      return Ada.Streams.Stream_Element_Array
+      return CBOR.Byte_Array
       with Pre => Valid_String_Ref (Data, Ref),
            Post => Get_String'Result'First = 1
                    and then Get_String'Result'Length = Ref.Length
@@ -134,10 +134,10 @@ package CBOR.Decoding is
    --  For indefinite-length strings, the cumulative chunk length
    --  is tracked and also checked against Max_String_Len.
    function Decode_All
-     (Data           : Ada.Streams.Stream_Element_Array;
+     (Data           : CBOR.Byte_Array;
       Check_UTF8     : Boolean := True;
-      Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last;
+      Max_String_Len : CBOR.SE_Offset :=
+        CBOR.SE_Offset'Last;
       Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
       with Pre => Data'First >= 0
@@ -151,10 +151,10 @@ package CBOR.Decoding is
    --  Like Decode_All but rejects trailing bytes after the top-level
    --  item. Returns Err_Trailing_Data if Next /= Data'Last + 1.
    function Decode_All_Strict
-     (Data           : Ada.Streams.Stream_Element_Array;
+     (Data           : CBOR.Byte_Array;
       Check_UTF8     : Boolean := True;
-      Max_String_Len : Ada.Streams.Stream_Element_Offset :=
-        Ada.Streams.Stream_Element_Offset'Last;
+      Max_String_Len : CBOR.SE_Offset :=
+        CBOR.SE_Offset'Last;
       Max_Depth      : Natural := Max_Nesting_Depth)
       return Decode_All_Result
      with Pre => Data'First >= 0
@@ -169,7 +169,7 @@ package CBOR.Decoding is
    --  Rejects overlong encodings, surrogates (U+D800..U+DFFF),
    --  and code points above U+10FFFF.
    function Is_Valid_UTF8
-     (Data : Ada.Streams.Stream_Element_Array)
+     (Data : CBOR.Byte_Array)
       return Boolean
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length;

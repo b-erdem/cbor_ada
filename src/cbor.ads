@@ -1,7 +1,7 @@
 --  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
 --  SPDX-License-Identifier: Apache-2.0
 
-with Ada.Streams;
+with System.Storage_Elements;
 with Interfaces;
 
 --  CBOR (RFC 8949) encoding/decoding library for Ada/SPARK.
@@ -24,9 +24,10 @@ package CBOR is
    pragma Pure;
    pragma SPARK_Mode;
 
-   package SE renames Ada.Streams;
-   subtype Byte is SE.Stream_Element;
-   subtype SE_Offset is SE.Stream_Element_Offset;
+   package SSE renames System.Storage_Elements;
+   subtype Byte is SSE.Storage_Element;
+   subtype Byte_Array is SSE.Storage_Array;
+   subtype SE_Offset is SSE.Storage_Offset;
    subtype SE_Length is SE_Offset range 0 .. SE_Offset'Last;
 
    --  CBOR major types (RFC 8949 Section 3.1)

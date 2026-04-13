@@ -1,6 +1,6 @@
 name = "cbor_ada"
 description = "CBOR (RFC 8949) encoding/decoding library with SPARK formal verification"
-version = "0.1.1"
+version = "0.2.0"
 
 authors = ["Baris Erdem"]
 maintainers = ["Baris Erdem <baris@erdem.dev>"]
