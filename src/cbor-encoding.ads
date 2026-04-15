@@ -20,12 +20,17 @@ package CBOR.Encoding is
      CBOR.SE_Offset'Last / 2;
 
    --  Encode unsigned integer (major type 0, full 64-bit range).
+   --  @satisfies REQ-CBOR-001
+   --  @satisfies REQ-CBOR-010
+   --  @satisfies REQ-CBOR-060
    function Encode_Unsigned
      (Value : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Unsigned'Result'Length in 1 .. 9;
 
    --  Encode negative integer -1 - Arg (major type 1).
+   --  @satisfies REQ-CBOR-002
+   --  @satisfies REQ-CBOR-010
    function Encode_Negative
      (Arg : CBOR.UInt64)
       return CBOR.Byte_Array
@@ -35,12 +40,14 @@ package CBOR.Encoding is
    --  Non-negative values use major type 0 (unsigned).
    --  Negative values use major type 1 (negative, encoding -1 - N).
    --  Covers the range -(2^63) .. +(2^64 - 1) via separate paths.
+   --  @satisfies REQ-CBOR-003
    function Encode_Integer
      (Value : Interfaces.Integer_64)
       return CBOR.Byte_Array
      with Post => Encode_Integer'Result'Length in 1 .. 9;
 
    --  Encode definite-length byte string (major type 2).
+   --  @satisfies REQ-CBOR-004
    function Encode_Byte_String
      (Data : CBOR.Byte_Array)
       return CBOR.Byte_Array
@@ -61,24 +68,29 @@ package CBOR.Encoding is
    --  (major type 3). Use this when you have pre-encoded UTF-8
    --  content as a Byte_Array. Unlike Encode_Text_String,
    --  this avoids the Latin-1/Character'Pos ambiguity.
+   --  @satisfies REQ-CBOR-005
    function Encode_Text_String_UTF8
      (Data : CBOR.Byte_Array)
       return CBOR.Byte_Array
      with Pre => Data'Length <= Max_Data_Length;
 
    --  Encode definite-length array header (major type 4).
+   --  @satisfies REQ-CBOR-006
+   --  @satisfies REQ-CBOR-010
    function Encode_Array
      (Count : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Array'Result'Length in 1 .. 9;
 
    --  Encode definite-length map header (major type 5).
+   --  @satisfies REQ-CBOR-007
    function Encode_Map
      (Count : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Map'Result'Length in 1 .. 9;
 
    --  Encode tag number (major type 6).
+   --  @satisfies REQ-CBOR-008
    function Encode_Tag
      (Tag_Number : CBOR.UInt64)
       return CBOR.Byte_Array
@@ -86,6 +98,7 @@ package CBOR.Encoding is
 
    --  Encode simple value (major type 7, one or two bytes).
    --  Values 24-31 are reserved per RFC 8949 and rejected.
+   --  @satisfies REQ-CBOR-009
    function Encode_Simple
      (Value : Interfaces.Unsigned_8)
       return CBOR.Byte_Array

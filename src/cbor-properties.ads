@@ -19,6 +19,7 @@ package CBOR.Properties is
 
    pragma SPARK_Mode;
 
+   --  @satisfies REQ-CBOR-040
    procedure Lemma_Round_Trip_Unsigned (Value : CBOR.UInt64)
      with Ghost,
           Post => (declare
@@ -30,6 +31,7 @@ package CBOR.Properties is
                      and then R.Item.Kind = CBOR.MT_Unsigned_Integer
                      and then R.Item.UInt_Value = Value);
 
+   --  @satisfies REQ-CBOR-041
    procedure Lemma_Round_Trip_Negative (Arg : CBOR.UInt64)
      with Ghost,
           Post => (declare
@@ -41,6 +43,7 @@ package CBOR.Properties is
                      and then R.Item.Kind = CBOR.MT_Negative_Integer
                      and then R.Item.NInt_Arg = Arg);
 
+   --  @satisfies REQ-CBOR-042
    procedure Lemma_Round_Trip_Bool (Value : Boolean)
      with Ghost,
           Post => (declare
@@ -89,6 +92,7 @@ package CBOR.Properties is
                      and then R.Item.Kind = CBOR.MT_Simple_Value
                      and then CBOR.UInt64 (R.Item.SV_Value) = Value);
 
+   --  @satisfies REQ-CBOR-044
    procedure Lemma_Round_Trip_Tag (Tag_Number : CBOR.UInt64)
      with Ghost,
           Post => (declare
@@ -100,6 +104,7 @@ package CBOR.Properties is
                      and then R.Item.Kind = CBOR.MT_Tag
                      and then R.Item.Tag_Number = Tag_Number);
 
+   --  @satisfies REQ-CBOR-043
    procedure Lemma_Round_Trip_Array (Count : CBOR.UInt64)
      with Ghost,
           Post => (declare

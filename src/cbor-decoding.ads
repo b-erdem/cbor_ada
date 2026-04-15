@@ -61,6 +61,9 @@ package CBOR.Decoding is
    --  Result.Next is the first unconsumed byte position
    --  (Data'Last + 1 when the entire buffer is consumed).
    --  Standalone break (0xFF) is rejected as Err_Not_Well_Formed.
+   --  @satisfies REQ-CBOR-020
+   --  @satisfies REQ-CBOR-021
+   --  @satisfies REQ-CBOR-022
    function Decode
      (Data : CBOR.Byte_Array)
       return Decode_Result
@@ -133,6 +136,9 @@ package CBOR.Decoding is
    --  Err_String_Too_Long if exceeded (default: no limit).
    --  For indefinite-length strings, the cumulative chunk length
    --  is tracked and also checked against Max_String_Len.
+   --  @satisfies REQ-CBOR-020
+   --  @satisfies REQ-CBOR-023
+   --  @satisfies REQ-CBOR-024
    function Decode_All
      (Data           : CBOR.Byte_Array;
       Check_UTF8     : Boolean := True;
@@ -150,6 +156,7 @@ package CBOR.Decoding is
 
    --  Like Decode_All but rejects trailing bytes after the top-level
    --  item. Returns Err_Trailing_Data if Next /= Data'Last + 1.
+   --  @satisfies REQ-CBOR-025
    function Decode_All_Strict
      (Data           : CBOR.Byte_Array;
       Check_UTF8     : Boolean := True;
@@ -168,6 +175,7 @@ package CBOR.Decoding is
    --  Validate byte array as UTF-8 per RFC 3629.
    --  Rejects overlong encodings, surrogates (U+D800..U+DFFF),
    --  and code points above U+10FFFF.
+   --  @satisfies REQ-CBOR-024
    function Is_Valid_UTF8
      (Data : CBOR.Byte_Array)
       return Boolean

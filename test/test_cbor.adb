@@ -107,6 +107,12 @@ procedure Test_Cbor is
       Passes := Passes + 1;
    end Check_Enc;
 
+   --  @tests REQ-CBOR-001
+   --  @tests REQ-CBOR-002
+   --  @tests REQ-CBOR-006
+   --  @tests REQ-CBOR-007
+   --  @tests REQ-CBOR-008
+   --  @tests REQ-CBOR-010
    procedure Test_RFC8949_Encoding is
    begin
       TIO.Put_Line ("  RFC 8949 encoding vectors:");
@@ -197,6 +203,7 @@ procedure Test_Cbor is
       Check ("text byte5", 111, UInt64 (S (5)));
    end Test_Decode_Strings;
 
+   --  @tests REQ-CBOR-004
    procedure Test_Decode_Byte_String is
       Raw : constant Storage_Array :=
         [16#de#, 16#ad#, 16#be#, 16#ef#];
@@ -238,6 +245,9 @@ procedure Test_Cbor is
              UInt64 (R3.Item.SV_Value));
    end Test_Decode_Nested;
 
+   --  @tests REQ-CBOR-020
+   --  @tests REQ-CBOR-021
+   --  @tests REQ-CBOR-022
    procedure Test_Well_Formedness is
       Bad1 : constant Storage_Array := [16#1c#];
       R1   : constant CBOR.Decode_Result :=
@@ -479,6 +489,7 @@ procedure Test_Cbor is
       Check ("map val1 v", 1, R.Items (3).UInt_Value);
    end Test_Decode_All_Map;
 
+   --  @tests REQ-CBOR-024
    procedure Test_UTF8 is
       Valid_ASCII : constant Storage_Array :=
         [16#48#, 16#65#, 16#6C#, 16#6C#, 16#6F#];
@@ -545,6 +556,7 @@ procedure Test_Cbor is
                     CBOR.Err_Invalid_UTF8, R_Bad.Status);
    end Test_Decode_All_UTF8;
 
+   --  @tests REQ-CBOR-021
    procedure Test_Shortest_Form is
       NF1 : constant CBOR.Decode_Result :=
         Dec.Decode ([16#18#, 16#00#]);
@@ -746,6 +758,7 @@ procedure Test_Cbor is
       end;
    end Test_Empty_Strings;
 
+   --  @tests REQ-CBOR-025
    procedure Test_Decode_All_Strict is
       Exact : constant Storage_Array :=
         Enc.Encode_Unsigned (42);
@@ -773,6 +786,7 @@ procedure Test_Cbor is
 
    Gen : Rand_U64.Generator;
 
+   --  @tests REQ-CBOR-040
    procedure Test_Round_Trip_Unsigned is
       Edge : constant array (1 .. 11) of UInt64 :=
         [0, 1, 23, 24, 255, 256, 65535, 65536,
@@ -807,6 +821,7 @@ procedure Test_Cbor is
       end loop;
    end Test_Round_Trip_Unsigned;
 
+   --  @tests REQ-CBOR-041
    procedure Test_Round_Trip_Negative is
       Edge : constant array (1 .. 11) of UInt64 :=
         [0, 1, 23, 24, 255, 256, 65535, 65536,
@@ -841,6 +856,8 @@ procedure Test_Cbor is
       end loop;
    end Test_Round_Trip_Negative;
 
+   --  @tests REQ-CBOR-042
+   --  @tests REQ-CBOR-009
    procedure Test_Round_Trip_Simple_Types is
    begin
       TIO.Put_Line ("  Round-trip simple types:");
@@ -896,6 +913,7 @@ procedure Test_Cbor is
       end loop;
    end Test_Round_Trip_Simple_Types;
 
+   --  @tests REQ-CBOR-044
    procedure Test_Round_Trip_Tag is
       Edge : constant array (1 .. 8) of UInt64 :=
         [0, 1, 23, 24, 255, 65535,
@@ -1051,6 +1069,7 @@ procedure Test_Cbor is
       end;
    end Test_Round_Trip_Floats;
 
+   --  @tests REQ-CBOR-043
    procedure Test_Round_Trip_Containers is
       Counts : constant array (1 .. 5) of UInt64 :=
         [0, 1, 23, 24, 255];
@@ -1259,6 +1278,7 @@ procedure Test_Cbor is
                     CBOR.Err_Not_Well_Formed, R.Status);
    end Test_TS_With_BS_Chunks;
 
+   --  @tests REQ-CBOR-003
    procedure Test_Encode_Integer is
    begin
       TIO.Put_Line ("  Encode_Integer:");
@@ -1331,6 +1351,7 @@ procedure Test_Cbor is
       end;
    end Test_Encode_Integer;
 
+   --  @tests REQ-CBOR-023
    procedure Test_Max_Depth_Parameter is
       --  8 levels of nesting: [[[[[[[[0]]]]]]]]
       Depth_8 : constant Storage_Array (1 .. 9) :=
@@ -1451,6 +1472,7 @@ procedure Test_Cbor is
                     CBOR.Err_String_Too_Long, R_Strict.Status);
    end Test_Max_String_Length;
 
+   --  @tests REQ-CBOR-005
    procedure Test_Encode_Text_UTF8 is
       --  Test the new Encode_Text_String_UTF8 function
       UTF8_Bytes : constant Storage_Array :=
@@ -1471,6 +1493,7 @@ procedure Test_Cbor is
       Check ("utf8 enc b5", 16#6F#, UInt64 (D (5)));
    end Test_Encode_Text_UTF8;
 
+   --  @tests REQ-CBOR-022
    procedure Test_Reserved_AI is
       --  AI=28 across multiple major types
       R_U28 : constant CBOR.Decode_Result :=
