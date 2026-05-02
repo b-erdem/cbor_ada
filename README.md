@@ -6,7 +6,7 @@ The encoder and decoder are **100% SPARK-proved** at Level 2 — mathematically 
 
 ## Key properties
 
-- **Formally verified** — 517 proof obligations, 0 unproved (CVC5/Z3)
+- **Formally verified core** — 517 proof obligations on the encoder + decoder, 0 unproved (CVC5/Z3). Optional round-trip lemmas in `CBOR.Properties` are aspirational and not yet fully discharged; see [SPARK proof status](#spark-proof-status).
 - **RFC 8949 compliant** — full well-formedness validation with shortest-form checking
 - **No heap allocation** — stack-only, suitable for embedded and safety-critical systems
 - **Stateless** — `pragma Pure`, no global state, no side effects
@@ -150,12 +150,16 @@ The decoder enforces all RFC 8949 well-formedness requirements:
 
 ## SPARK proof status
 
+The runtime-critical surface — `CBOR.Encoding` and `CBOR.Decoding` — is fully proved at Level 2:
+
 ```
 SPARK Analysis results   Total   Flow   Provers   Unproved
 Total                      517     47       470          .
 ```
 
-All 517 checks proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
+All 517 checks on the encoder + decoder are proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
+
+`CBOR.Properties` is a separate package of round-trip lemmas (`Lemma_Round_Trip_Unsigned`, `_Negative`, `_Bool`, `_Float_*`, etc.) that aim to prove the algebraic property `Decode (Encode (x)) = x` for each major type. These lemmas are **not on the runtime path** — they exist purely as proof artefacts — and they are still **work-in-progress**: at the time of writing, 90 of their 198 obligations are unproved at Level 2 / 120 s. Consumers who only call the encoder/decoder are unaffected; consumers who want to compose CBOR.Properties into larger proofs should expect to need their own assumes or higher prover budgets until the lemmas are closed.
 
 ### Running proofs locally
 
@@ -163,7 +167,7 @@ All 517 checks proved. No `pragma Assume` or `Justified` annotations — every o
 # Prove core packages (~30 seconds)
 scripts/prove
 
-# Prove everything including round-trip lemmas (slow)
+# Prove everything including the in-progress round-trip lemmas (slow)
 scripts/prove 2 120 all
 ```
 
