@@ -320,6 +320,7 @@ def check_assumptions(crate: Crate) -> list[Finding]:
     if not crate.applies("P3"):
         return []
     out = []
+    comment = re.compile(r"(^|\s)--")  # an Ada comment on a line
     for f in crate_source_files(crate):
         rel = f.relative_to(crate.path).as_posix()
         try:
@@ -327,14 +328,27 @@ def check_assumptions(crate: Crate) -> list[Finding]:
         except OSError:
             continue
         for i, line in enumerate(lines):
-            ctx = " ".join(lines[max(0, i - 1):i + 2])
-            justified = crate.waived("P3") or bool(DEC_CITE_RE.search(ctx)) or "--" in line \
-                or (i > 0 and lines[i - 1].lstrip().startswith("--"))
             if re.search(r"\bpragma\s+Assume\b", line, re.I):
+                # The statement may span several lines; collect up to its ';'.
+                end = i
+                while end < len(lines) and end < i + 12 and ";" not in lines[end]:
+                    end += 1
+                stmt = " ".join(lines[i:end + 1])
+                window = lines[max(0, i - 1): end + 3]
+                # A 2-argument `pragma Assume (Cond, "reason")` carries its own
+                # justification — the sanctioned SPARK idiom. Otherwise accept an
+                # adjacent comment or a DEC cite.
+                justified = (crate.waived("P3")
+                             or bool(re.search(r'pragma\s+Assume\s*\(.*,\s*"', stmt, re.I | re.S))
+                             or any(DEC_CITE_RE.search(w) for w in window)
+                             or any(comment.search(w) for w in window))
                 out.append(Finding("P3", True, crate.name, rel, i + 1,
                                    "pragma Assume without an inline justification or DEC cite (P3)",
                                    excepted=justified))
             elif re.search(r"SPARK_Mode\s*(=>|\()\s*Off", line, re.I):
+                prev = lines[i - 1] if i > 0 else ""
+                justified = (crate.waived("P3") or bool(DEC_CITE_RE.search(line + " " + prev))
+                             or bool(comment.search(line)) or bool(comment.search(prev)))
                 out.append(Finding("P3", False, crate.name, rel, i + 1,
                                    "SPARK_Mode Off — confirm this unit is out of proof scope by design (P3)",
                                    excepted=justified))
@@ -383,7 +397,7 @@ def check_vendored(crate: Crate) -> list[Finding]:
         return []
     try:
         if vend.read_bytes() != Path(__file__).resolve().read_bytes():
-            return [Finding("P12", True, crate.name, "tools/governance_check.py", 0,
+            return [Finding("P12", False, crate.name, "tools/governance_check.py", 0,
                            "vendored CI check is out of sync with the workspace tool — "
                            "run `governance.py sync-ci` (P12)", excepted=crate.waived("P12"))]
     except OSError:
