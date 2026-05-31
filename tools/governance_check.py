@@ -429,9 +429,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Constitutional scan
-        # Warn-only until the workspace backlog clears; append --gate to make it blocking.
-        run: python3 tools/governance_check.py scan --crate .
+      - name: Constitutional scan (blocking)
+        # The workspace backlog is clear, so this gates: a new blocking-class
+        # violation fails CI. Document a justified exception in .governance.toml to clear it.
+        run: python3 tools/governance_check.py scan --crate . --gate
 """
 
 
