@@ -6,3 +6,8 @@ published = true
 gpr     = "cbor_ada.gpr"
 claimed_proof_level = 2
 claimed_vcs = 517
+
+[[exceptions]]
+principle = "P2"
+reason    = "Level-2 proof discharges in CI with the full prover set; the dev machine lacks alt-ergo, so a local z3+cvc5 run leaves 83 cbor-properties ghost-lemma VCs undischarged. Commit proof/ evidence from a full-prover-set run."
+expires   = "2026-12-31"
