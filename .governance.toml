@@ -1,0 +1,8 @@
+# Governance manifest — see ../CONSTITUTION.md and
+# ../docs/governance/exceptions-policy.md
+name    = "cbor_ada"
+profile = "proved-protocol"
+published = true
+gpr     = "cbor_ada.gpr"
+claimed_proof_level = 2
+claimed_vcs = 517
