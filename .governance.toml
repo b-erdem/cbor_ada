@@ -5,9 +5,9 @@ profile = "proved-protocol"
 published = true
 gpr     = "cbor_ada.gpr"
 claimed_proof_level = 2
-claimed_vcs = 517
+claimed_vcs = 641
 
 [[exceptions]]
-principle = "P2"
-reason    = "Level-2 proof discharges in CI with the full prover set; the dev machine lacks alt-ergo, so a local z3+cvc5 run leaves 83 cbor-properties ghost-lemma VCs undischarged. Commit proof/ evidence from a full-prover-set run."
+principle = "P1"
+reason    = "The core CBOR codec proves cleanly (641 VCs), but 83 of 724 VCs — the cbor-properties round-trip lemmas (Lemma_Round_Trip_*) — stay unproved even at gnatprove --level=4 with z3+cvc5 (confirmed 2026-05-31). Root cause: the decoder precondition (Data'First >= 0) is not established for the encoder's Storage_Array result, so it needs a postcondition on the encoder or lemma restructuring — manual proof engineering, NOT a solver-availability issue. The headline count was reconciled from 517 to the verified 641 proved."
 expires   = "2026-12-31"
