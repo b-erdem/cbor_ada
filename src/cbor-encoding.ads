@@ -26,7 +26,8 @@ package CBOR.Encoding is
    function Encode_Unsigned
      (Value : CBOR.UInt64)
       return CBOR.Byte_Array
-     with Post => Encode_Unsigned'Result'Length in 1 .. 9;
+     with Post => Encode_Unsigned'Result'Length in 1 .. 9
+                  and then Encode_Unsigned'Result'First = 1;
 
    --  Encode negative integer -1 - Arg (major type 1).
    --  @satisfies REQ-CBOR-002
@@ -34,7 +35,8 @@ package CBOR.Encoding is
    function Encode_Negative
      (Arg : CBOR.UInt64)
       return CBOR.Byte_Array
-     with Post => Encode_Negative'Result'Length in 1 .. 9;
+     with Post => Encode_Negative'Result'Length in 1 .. 9
+                  and then Encode_Negative'Result'First = 1;
 
    --  Encode a signed integer using the appropriate CBOR major type.
    --  Non-negative values use major type 0 (unsigned).
@@ -80,21 +82,24 @@ package CBOR.Encoding is
    function Encode_Array
      (Count : CBOR.UInt64)
       return CBOR.Byte_Array
-     with Post => Encode_Array'Result'Length in 1 .. 9;
+     with Post => Encode_Array'Result'Length in 1 .. 9
+                  and then Encode_Array'Result'First = 1;
 
    --  Encode definite-length map header (major type 5).
    --  @satisfies REQ-CBOR-007
    function Encode_Map
      (Count : CBOR.UInt64)
       return CBOR.Byte_Array
-     with Post => Encode_Map'Result'Length in 1 .. 9;
+     with Post => Encode_Map'Result'Length in 1 .. 9
+                  and then Encode_Map'Result'First = 1;
 
    --  Encode tag number (major type 6).
    --  @satisfies REQ-CBOR-008
    function Encode_Tag
      (Tag_Number : CBOR.UInt64)
       return CBOR.Byte_Array
-     with Post => Encode_Tag'Result'Length in 1 .. 9;
+     with Post => Encode_Tag'Result'Length in 1 .. 9
+                  and then Encode_Tag'Result'First = 1;
 
    --  Encode simple value (major type 7, one or two bytes).
    --  Values 24-31 are reserved per RFC 8949 and rejected.
@@ -103,23 +108,27 @@ package CBOR.Encoding is
      (Value : Interfaces.Unsigned_8)
       return CBOR.Byte_Array
      with Pre => Value <= 23 or else Value >= 32,
-          Post => Encode_Simple'Result'Length in 1 .. 2;
+          Post => Encode_Simple'Result'Length in 1 .. 2
+                  and then Encode_Simple'Result'First = 1;
 
    --  Encode boolean (simple values 20/21).
    function Encode_Bool
      (Value : Boolean)
       return CBOR.Byte_Array
-     with Post => Encode_Bool'Result'Length = 1;
+     with Post => Encode_Bool'Result'Length = 1
+                  and then Encode_Bool'Result'First = 1;
 
    --  Encode null (simple value 22).
    function Encode_Null
       return CBOR.Byte_Array
-     with Post => Encode_Null'Result'Length = 1;
+     with Post => Encode_Null'Result'Length = 1
+                  and then Encode_Null'Result'First = 1;
 
    --  Encode undefined (simple value 23).
    function Encode_Undefined
       return CBOR.Byte_Array
-     with Post => Encode_Undefined'Result'Length = 1;
+     with Post => Encode_Undefined'Result'Length = 1
+                  and then Encode_Undefined'Result'First = 1;
 
    --  Encode half-precision float (AI=25, raw 2 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
@@ -127,7 +136,8 @@ package CBOR.Encoding is
      (Bytes : CBOR.Byte_Array)
       return CBOR.Byte_Array
      with Pre  => Bytes'Length = 2,
-          Post => Encode_Float_Half'Result'Length = 3;
+          Post => Encode_Float_Half'Result'Length = 3
+                  and then Encode_Float_Half'Result'First = 1;
 
    --  Encode single-precision float (AI=26, raw 4 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
@@ -135,7 +145,8 @@ package CBOR.Encoding is
      (Bytes : CBOR.Byte_Array)
       return CBOR.Byte_Array
      with Pre  => Bytes'Length = 4,
-          Post => Encode_Float_Single'Result'Length = 5;
+          Post => Encode_Float_Single'Result'Length = 5
+                  and then Encode_Float_Single'Result'First = 1;
 
    --  Encode double-precision float (AI=27, raw 8 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
@@ -143,7 +154,8 @@ package CBOR.Encoding is
      (Bytes : CBOR.Byte_Array)
       return CBOR.Byte_Array
      with Pre  => Bytes'Length = 8,
-          Post => Encode_Float_Double'Result'Length = 9;
+          Post => Encode_Float_Double'Result'Length = 9
+                  and then Encode_Float_Double'Result'First = 1;
 
    --  Encode break stop code (0xFF).
    function Encode_Break
@@ -186,6 +198,7 @@ private
      (MT  : CBOR.Major_Type;
       Val : CBOR.UInt64)
       return CBOR.Byte_Array
-     with Post => Encode_Head'Result'Length = Head_Length (Val);
+     with Post => Encode_Head'Result'Length = Head_Length (Val)
+                  and then Encode_Head'Result'First = 1;
 
 end CBOR.Encoding;

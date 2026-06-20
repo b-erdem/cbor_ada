@@ -77,6 +77,37 @@ package body CBOR.Decoding is
       Pos  : CBOR.SE_Offset;
       AI   : Unsigned_8)
       return UInt64
+   is
+     (if AI <= 23 then
+         UInt64 (AI)
+      elsif AI = 24 then
+         UInt64 (Unsigned_8 (Data (Pos + 1)))
+      elsif AI = 25 then
+         UInt64 (Unsigned_8 (Data (Pos + 1))) * 256
+            + UInt64 (Unsigned_8 (Data (Pos + 2)))
+      elsif AI = 26 then
+         UInt64 (Unsigned_8 (Data (Pos + 1))) * 16#100_0000#
+            + UInt64 (Unsigned_8 (Data (Pos + 2))) * 16#10000#
+            + UInt64 (Unsigned_8 (Data (Pos + 3))) * 16#100#
+            + UInt64 (Unsigned_8 (Data (Pos + 4)))
+      elsif AI = 27 then
+         UInt64 (Unsigned_8 (Data (Pos + 1)))
+              * 16#100_0000_0000_0000#
+            + UInt64 (Unsigned_8 (Data (Pos + 2)))
+                * 16#100_0000_0000_00#
+            + UInt64 (Unsigned_8 (Data (Pos + 3)))
+                * 16#100_0000_0000#
+            + UInt64 (Unsigned_8 (Data (Pos + 4)))
+                * 16#100_0000_00#
+            + UInt64 (Unsigned_8 (Data (Pos + 5)))
+                * 16#100_0000#
+            + UInt64 (Unsigned_8 (Data (Pos + 6)))
+                * 16#10000#
+            + UInt64 (Unsigned_8 (Data (Pos + 7)))
+                * 16#100#
+            + UInt64 (Unsigned_8 (Data (Pos + 8)))
+      else
+         0)
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length
                  and then Has_Head (Data, Pos, AI)
@@ -90,41 +121,51 @@ package body CBOR.Decoding is
                               when 27 =>
                                  Pos <= CBOR.SE_Offset'Last - 8,
                               when others =>
-                                 True)
+                                 True);
+
+   function Head_UInt
+     (Data : CBOR.Byte_Array;
+      P    : CBOR.SE_Offset)
+      return UInt64
    is
-   begin
-      if AI <= 23 then
-         return UInt64 (AI);
-      elsif AI = 24 then
-         return UInt64 (Unsigned_8 (Data (Pos + 1)));
-      elsif AI = 25 then
-         return UInt64 (Unsigned_8 (Data (Pos + 1))) * 256
-              + UInt64 (Unsigned_8 (Data (Pos + 2)));
-      elsif AI = 26 then
-         return UInt64 (Unsigned_8 (Data (Pos + 1))) * 16#100_0000#
-              + UInt64 (Unsigned_8 (Data (Pos + 2))) * 16#10000#
-              + UInt64 (Unsigned_8 (Data (Pos + 3))) * 16#100#
-              + UInt64 (Unsigned_8 (Data (Pos + 4)));
-      elsif AI = 27 then
-         return UInt64 (Unsigned_8 (Data (Pos + 1)))
-                  * 16#100_0000_0000_0000#
-              + UInt64 (Unsigned_8 (Data (Pos + 2)))
-                  * 16#100_0000_0000_00#
-              + UInt64 (Unsigned_8 (Data (Pos + 3)))
-                  * 16#100_0000_0000#
-              + UInt64 (Unsigned_8 (Data (Pos + 4)))
-                  * 16#100_0000_00#
-              + UInt64 (Unsigned_8 (Data (Pos + 5)))
-                  * 16#100_0000#
-              + UInt64 (Unsigned_8 (Data (Pos + 6)))
-                  * 16#10000#
-              + UInt64 (Unsigned_8 (Data (Pos + 7)))
-                  * 16#100#
-              + UInt64 (Unsigned_8 (Data (Pos + 8)));
+     (if (Unsigned_8 (Data (P)) and 16#1F#) <= 23 then
+         UInt64 (Unsigned_8 (Data (P)) and 16#1F#)
+      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 24
+            and then P <= Data'Last - 1
+      then
+         UInt64 (Unsigned_8 (Data (P + 1)))
+      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 25
+            and then P <= Data'Last - 2
+      then
+         UInt64 (Unsigned_8 (Data (P + 1))) * 256
+            + UInt64 (Unsigned_8 (Data (P + 2)))
+      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 26
+            and then P <= Data'Last - 4
+      then
+         UInt64 (Unsigned_8 (Data (P + 1))) * 16#100_0000#
+            + UInt64 (Unsigned_8 (Data (P + 2))) * 16#10000#
+            + UInt64 (Unsigned_8 (Data (P + 3))) * 16#100#
+            + UInt64 (Unsigned_8 (Data (P + 4)))
+      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 27
+            and then P <= Data'Last - 8
+      then
+         UInt64 (Unsigned_8 (Data (P + 1)))
+              * 16#100_0000_0000_0000#
+            + UInt64 (Unsigned_8 (Data (P + 2)))
+                * 16#100_0000_0000_00#
+            + UInt64 (Unsigned_8 (Data (P + 3)))
+                * 16#100_0000_0000#
+            + UInt64 (Unsigned_8 (Data (P + 4)))
+                * 16#100_0000_00#
+            + UInt64 (Unsigned_8 (Data (P + 5)))
+                * 16#100_0000#
+            + UInt64 (Unsigned_8 (Data (P + 6)))
+                * 16#10000#
+            + UInt64 (Unsigned_8 (Data (P + 7)))
+                * 16#100#
+            + UInt64 (Unsigned_8 (Data (P + 8)))
       else
-         return 0;
-      end if;
-   end Read_Arg;
+         0);
 
    --  Internal decode starting at position P.
    function Decode_At
@@ -146,7 +187,14 @@ package body CBOR.Decoding is
                       and then Decode_At'Result.Item.Item_End
                         >= Decode_At'Result.Item.Head_Start
                       and then Valid_Item_Refs
-                                 (Data, Decode_At'Result.Item))
+                                 (Data, Decode_At'Result.Item)
+                      and then
+                        (if Decode_At'Result.Item.Kind
+                               = MT_Unsigned_Integer
+                         then Decode_At'Result.Item.UInt_Value
+                                = Head_UInt
+                                    (Data,
+                                     Decode_At'Result.Item.Head_Start)))
    is
    begin
       declare
@@ -232,6 +280,8 @@ package body CBOR.Decoding is
                                 Item    => <>,
                                 Next    => P);
                      end if;
+                     pragma Assert
+                       (Head_UInt (Data, P) = Read_Arg (Data, P, AI));
                      return (Status => OK,
                              Item   => (Kind       =>
                                           CBOR.MT_Unsigned_Integer,

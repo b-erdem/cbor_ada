@@ -20,6 +20,7 @@ package CBOR.Decoding is
    pragma SPARK_Mode;
 
    use type CBOR.SE_Offset;
+   use type CBOR.UInt64;
 
    Max_Data_Length : constant CBOR.SE_Offset :=
      CBOR.SE_Offset'Last / 2;
@@ -54,6 +55,19 @@ package CBOR.Decoding is
      with Ghost,
           Pre => Data'First >= 0 and then Data'Last <= Max_Data_Length;
 
+   --  Big-endian value of the unsigned-integer argument whose head
+   --  byte is at position P.  Ghost twin of Read_Arg's MT-0 path,
+   --  used only in contracts.  Mirrors Read_Arg byte-for-byte so the
+   --  unsigned-arm soundness conjunct discharges by unfolding.
+   function Head_UInt
+     (Data : CBOR.Byte_Array;
+      P    : CBOR.SE_Offset)
+      return CBOR.UInt64
+     with Ghost,
+          Pre => Data'First >= 0
+                 and then Data'Last <= Max_Data_Length
+                 and then P in Data'Range;
+
    --  Decode a single CBOR data item header starting at Data'First.
    --  For containers (arrays, maps, tags, indefinite-length strings),
    --  only the header is decoded — child items are NOT validated.
@@ -81,7 +95,14 @@ package CBOR.Decoding is
                       and then Decode'Result.Item.Item_End
                         >= Decode'Result.Item.Head_Start
                       and then Valid_Item_Refs
-                                 (Data, Decode'Result.Item));
+                                 (Data, Decode'Result.Item)
+                      and then
+                        (if Decode'Result.Item.Kind
+                               = MT_Unsigned_Integer
+                         then Decode'Result.Item.UInt_Value
+                                = Head_UInt
+                                    (Data,
+                                     Decode'Result.Item.Head_Start)));
 
    --  Decode a single CBOR data item header starting at Pos.
    --  Same semantics as Decode (Data) — header only, no child
@@ -105,7 +126,14 @@ package CBOR.Decoding is
                       and then Decode'Result.Item.Item_End
                         >= Decode'Result.Item.Head_Start
                       and then Valid_Item_Refs
-                                 (Data, Decode'Result.Item));
+                                 (Data, Decode'Result.Item)
+                      and then
+                        (if Decode'Result.Item.Kind
+                               = MT_Unsigned_Integer
+                         then Decode'Result.Item.UInt_Value
+                                = Head_UInt
+                                    (Data,
+                                     Decode'Result.Item.Head_Start)));
 
    --  Return the head size in bytes for a given additional info.
    function Head_Size
