@@ -42,7 +42,7 @@ jobs:
         run: alr with gnatprove
 
       - name: Run SPARK proofs (core packages)
-        run: alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=2 --timeout=30 -u cbor-encoding.adb -u cbor-decoding.adb
+        run: alr exec -- gnatprove -P cbor_ada.gpr -j0 --level=2 --timeout=30 -u cbor-encoding.adb -u cbor-decoding.adb -u cbor-properties.adb
 
       - name: Show proof summary
         if: always()

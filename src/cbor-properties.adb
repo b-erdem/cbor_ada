@@ -1,6 +1,8 @@
 --  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
 --  SPDX-License-Identifier: Apache-2.0
 
+with CBOR.Model;
+
 package body CBOR.Properties is
 
    pragma SPARK_Mode;
@@ -17,6 +19,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Unsigned_Integer);
       pragma Assert (Result.Item.UInt_Value = Value);
@@ -28,6 +31,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Negative_Integer);
       pragma Assert (Result.Item.NInt_Arg = Arg);
@@ -39,6 +43,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       if Value then
@@ -54,6 +59,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       pragma Assert (Result.Item.SV_Value = 22);
@@ -65,6 +71,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       pragma Assert (Result.Item.SV_Value = 23);
@@ -76,6 +83,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       pragma Assert (CBOR.UInt64 (Result.Item.SV_Value) = Value);
@@ -87,6 +95,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Tag);
       pragma Assert (Result.Item.Tag_Number = Tag_Number);
@@ -98,6 +107,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Array);
       pragma Assert (Result.Item.Arr_Count = Count);
@@ -109,6 +119,7 @@ package body CBOR.Properties is
       Result  : constant CBOR.Decode_Result :=
         Dec.Decode (Encoded);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Map);
       pragma Assert (Result.Item.Map_Count = Count);
@@ -126,10 +137,18 @@ package body CBOR.Properties is
       Decoded : constant SSE.Storage_Array :=
         Dec.Get_String (Encoded, Result.Item.Float_Ref);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       pragma Assert (Result.Item.SV_Value = 25);
       pragma Assert (Result.Item.Float_Ref.Length = 2);
+      pragma Assert (Result.Item.Float_Ref.First = 2);
+      pragma Assert
+        (for all I in SSE.Storage_Offset range 1 .. 2 =>
+           Encoded (1 + I) = Raw (I));
+      pragma Assert
+        (for all I in SSE.Storage_Offset range 1 .. 2 =>
+           Decoded (I) = Encoded (1 + I));
       pragma Assert (Decoded (1) = B1);
       pragma Assert (Decoded (2) = B2);
    end Lemma_Round_Trip_Float_Half;
@@ -146,10 +165,18 @@ package body CBOR.Properties is
       Decoded : constant SSE.Storage_Array :=
         Dec.Get_String (Encoded, Result.Item.Float_Ref);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       pragma Assert (Result.Item.SV_Value = 26);
       pragma Assert (Result.Item.Float_Ref.Length = 4);
+      pragma Assert (Result.Item.Float_Ref.First = 2);
+      pragma Assert
+        (for all I in SSE.Storage_Offset range 1 .. 4 =>
+           Encoded (1 + I) = Raw (I));
+      pragma Assert
+        (for all I in SSE.Storage_Offset range 1 .. 4 =>
+           Decoded (I) = Encoded (1 + I));
       pragma Assert (Decoded (1) = B1);
       pragma Assert (Decoded (2) = B2);
       pragma Assert (Decoded (3) = B3);
@@ -169,10 +196,18 @@ package body CBOR.Properties is
       Decoded : constant SSE.Storage_Array :=
         Dec.Get_String (Encoded, Result.Item.Float_Ref);
    begin
+      pragma Assert (CBOR.Model.Well_Formed_Head (Encoded, 1));
       pragma Assert (Result.Status = CBOR.OK);
       pragma Assert (Result.Item.Kind = CBOR.MT_Simple_Value);
       pragma Assert (Result.Item.SV_Value = 27);
       pragma Assert (Result.Item.Float_Ref.Length = 8);
+      pragma Assert (Result.Item.Float_Ref.First = 2);
+      pragma Assert
+        (for all I in SSE.Storage_Offset range 1 .. 8 =>
+           Encoded (1 + I) = Raw (I));
+      pragma Assert
+        (for all I in SSE.Storage_Offset range 1 .. 8 =>
+           Decoded (I) = Encoded (1 + I));
       pragma Assert (Decoded (1) = B1);
       pragma Assert (Decoded (2) = B2);
       pragma Assert (Decoded (3) = B3);

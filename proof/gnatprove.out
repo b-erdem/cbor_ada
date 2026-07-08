@@ -1,0 +1,114 @@
+=========================
+Summary of SPARK analysis
+=========================
+
+-----------------------------------------------------------------------------------------------------------
+SPARK Analysis results        Total       Flow                               Provers   Justified   Unproved
+-----------------------------------------------------------------------------------------------------------
+Data Dependencies                 .          .                                     .           .          .
+Flow Dependencies                 .          .                                     .           .          .
+Initialization                    6          6                                     .           .          .
+Non-Aliasing                      .          .                                     .           .          .
+Run-time Checks                 585          .    585 (CVC5 88%, Trivial 1%, Z3 12%)           .          .
+Assertions                      202          .    202 (CVC5 66%, Trivial 7%, Z3 27%)           .          .
+Functional Contracts            235          .    235 (CVC5 80%, Trivial 4%, Z3 16%)           .          .
+LSP Verification                  .          .                                     .           .          .
+Termination                      54         51                  3 (CVC5 67%, Z3 33%)           .          .
+Concurrency                       .          .                                     .           .          .
+-----------------------------------------------------------------------------------------------------------
+Total                          1082    57 (5%)                            1025 (95%)           .          .
+
+
+max steps used for successful proof: 7233
+
+============================
+Most difficult proved checks
+============================
+
+cbor-decoding.adb:133:19: postcondition proved in max 1 seconds
+cbor-decoding.ads:211:20: postcondition proved in max 1 seconds
+
+========================
+Detailed analysis report
+========================
+
+Analyzed 6 units
+in unit cbor, 3 subprograms and packages out of 3 analyzed
+  CBOR at cbor.ads:22 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.MT_To_U8 at cbor.ads:45 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.U8_To_MT at cbor.ads:59 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+in unit cbor-decoding, 22 subprograms and packages out of 22 analyzed
+  CBOR.Decoding at cbor-decoding.ads:20 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Decoding.Decode at cbor-decoding.ads:136 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Decoding.Decode at cbor-decoding.ads:151 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  CBOR.Decoding.Decode_All at cbor-decoding.ads:200 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (79 checks)
+  CBOR.Decoding.Decode_All.Handle_Container at cbor-decoding.adb:807 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (9 checks)
+  CBOR.Decoding.Decode_All.Is_Container at cbor-decoding.adb:737 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  CBOR.Decoding.Decode_All.Pop_And_Propagate at cbor-decoding.adb:779 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
+  CBOR.Decoding.Decode_All.Push at cbor-decoding.adb:753 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  CBOR.Decoding.Decode_All.Raw_AI at cbor-decoding.adb:722 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  CBOR.Decoding.Decode_All.Raw_MT at cbor-decoding.adb:729 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  CBOR.Decoding.Decode_All.Validate_Chunk at cbor-decoding.adb:856 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  CBOR.Decoding.Decode_All_Strict at cbor-decoding.ads:218 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Decoding.Decode_At at cbor-decoding.adb:126 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (106 checks)
+  CBOR.Decoding.Decode_Post_OK at cbor-decoding.ads:68 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (29 checks)
+  CBOR.Decoding.Get_String at cbor-decoding.ads:172 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (23 checks)
+  CBOR.Decoding.Has_Head at cbor-decoding.adb:55 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (4 checks)
+  CBOR.Decoding.Head_Size at cbor-decoding.ads:165 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  CBOR.Decoding.Is_Shortest at cbor-decoding.adb:37 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Decoding.Is_Valid_UTF8 at cbor-decoding.ads:237 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (78 checks)
+  CBOR.Decoding.Read_Arg at cbor-decoding.adb:74 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (31 checks)
+  CBOR.Decoding.Valid_Item_Refs at cbor-decoding.ads:49 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Decoding.Valid_String_Ref at cbor-decoding.ads:33 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+in unit cbor-encoding, 27 subprograms and packages out of 27 analyzed
+  CBOR.Encoding at cbor-encoding.ads:11 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Encoding.Append_All at cbor-encoding.adb:155 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Encoding.Encode_Array at cbor-encoding.ads:98 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Encoding.Encode_Array_Start at cbor-encoding.ads:269 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Encoding.Encode_Bool at cbor-encoding.ads:163 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  CBOR.Encoding.Encode_Break at cbor-encoding.ads:264 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Encoding.Encode_Byte_String at cbor-encoding.ads:69 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (33 checks)
+  CBOR.Encoding.Encode_Byte_String_Start at cbor-encoding.ads:279 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Encoding.Encode_Float_Double at cbor-encoding.ads:245 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (24 checks)
+  CBOR.Encoding.Encode_Float_Half at cbor-encoding.ads:205 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (13 checks)
+  CBOR.Encoding.Encode_Float_Single at cbor-encoding.ads:225 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (24 checks)
+  CBOR.Encoding.Encode_Head at cbor-encoding.ads:300 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (106 checks)
+  CBOR.Encoding.Encode_Integer at cbor-encoding.ads:62 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Encoding.Encode_Map at cbor-encoding.ads:112 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Encoding.Encode_Map_Start at cbor-encoding.ads:274 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Encoding.Encode_Negative at cbor-encoding.ads:44 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Encoding.Encode_Null at cbor-encoding.ads:178 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  CBOR.Encoding.Encode_Simple at cbor-encoding.ads:141 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (9 checks)
+  CBOR.Encoding.Encode_Tag at cbor-encoding.ads:126 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Encoding.Encode_Text_String at cbor-encoding.ads:80 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (29 checks)
+  CBOR.Encoding.Encode_Text_String_Start at cbor-encoding.ads:284 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Encoding.Encode_Text_String_UTF8 at cbor-encoding.ads:90 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (33 checks)
+  CBOR.Encoding.Encode_Undefined at cbor-encoding.ads:190 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (6 checks)
+  CBOR.Encoding.Encode_Unsigned at cbor-encoding.ads:28 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (5 checks)
+  CBOR.Encoding.Head_Length at cbor-encoding.ads:290 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Encoding.Make_Head at cbor-encoding.adb:21 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Encoding.To_SE at cbor-encoding.adb:29 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+in unit cbor-model, 8 subprograms and packages out of 8 analyzed
+  CBOR.Model at cbor-model.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Model.Arg_Shortest at cbor-model.ads:124 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Model.Head_AI at cbor-model.ads:33 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (1 checks)
+  CBOR.Model.Head_Bytes_Available at cbor-model.ads:65 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (3 checks)
+  CBOR.Model.Head_MT at cbor-model.ads:42 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (2 checks)
+  CBOR.Model.Head_Size at cbor-model.ads:52 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Model.Head_Value at cbor-model.ads:77 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (33 checks)
+  CBOR.Model.Well_Formed_Head at cbor-model.ads:141 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (18 checks)
+in unit cbor-properties, 13 subprograms and packages out of 13 analyzed
+  CBOR.Properties at cbor-properties.ads:18 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (0 checks)
+  CBOR.Properties.Lemma_Round_Trip_Array at cbor-properties.ads:108 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  CBOR.Properties.Lemma_Round_Trip_Bool at cbor-properties.ads:47 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (15 checks)
+  CBOR.Properties.Lemma_Round_Trip_Float_Double at cbor-properties.ads:157 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (46 checks)
+  CBOR.Properties.Lemma_Round_Trip_Float_Half at cbor-properties.ads:130 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (34 checks)
+  CBOR.Properties.Lemma_Round_Trip_Float_Single at cbor-properties.ads:143 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (38 checks)
+  CBOR.Properties.Lemma_Round_Trip_Map at cbor-properties.ads:119 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  CBOR.Properties.Lemma_Round_Trip_Negative at cbor-properties.ads:35 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  CBOR.Properties.Lemma_Round_Trip_Null at cbor-properties.ads:59 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  CBOR.Properties.Lemma_Round_Trip_Simple at cbor-properties.ads:81 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (16 checks)
+  CBOR.Properties.Lemma_Round_Trip_Tag at cbor-properties.ads:96 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  CBOR.Properties.Lemma_Round_Trip_Undefined at cbor-properties.ads:70 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+  CBOR.Properties.Lemma_Round_Trip_Unsigned at cbor-properties.ads:23 flow analyzed (0 errors, 0 checks, 0 warnings and 0 pragma Assume statements) and proved (12 checks)
+in unit cbor-requirements, 0 subprograms and packages out of 0 analyzed

@@ -4,10 +4,13 @@ Lib-local proof-technique notes for `cbor_ada`, indexed from the
 workspace [`PROOF_TECHNIQUES.md`](../PROOF_TECHNIQUES.md). Domain tag:
 `codec` (binary serialization / deserialization round-trips).
 
-Status at time of writing (2026-06-20): **661 / 724 VCs proved** at
-`gnatprove --level=2` (z3 + cvc5). The 63 open VCs are the
-`CBOR.Properties.Lemma_Round_Trip_*` encode/decode round-trip lemmas
-(see §2).
+Status (2026-07-07): **1082 / 1082 VCs proved** at
+`gnatprove --level=2` (z3 + cvc5) — zero unproved, zero justified,
+zero `pragma Assume`, and the 697-case test suite passes with the
+executable ghost contracts enabled. All 12
+`CBOR.Properties.Lemma_Round_Trip_*` lemmas are closed. The method
+that closed them is **§3**; §2 is the pre-closure plan, kept for the
+historical record.
 
 ---
 
@@ -72,7 +75,7 @@ can't be cheaply re-based in SPARK without a copy).
 
 ---
 
-## 2. Encode/decode round-trip: the opaque-decoder obstacle (open)
+## 2. Encode/decode round-trip: the opaque-decoder obstacle (CLOSED — see §3)
 
 **Status: open — the 63 unproved VCs.** This section is the method
 plan for the next session, not a solved technique.
@@ -212,3 +215,96 @@ This is itself the publication-worthy methodological result: **round-trip
 closure in SPARK's contract-only model requires the encoder to expose a
 functional byte-model in its contract; soundness then comes for free,
 and completeness follows by a banded replay lemma.**
+
+
+---
+
+## 3. Round-trip closure via a shared ghost denotation (2026-07-07)
+
+**Domain:** codec. This is the implemented, prover-verified version of
+the plan in §2. All 12 round-trip lemmas prove at `--level=2
+--timeout=30` with zero unproved VCs across the library (1082 total).
+
+### Architecture
+
+One new ghost package, `CBOR.Model` (cbor-model.ads), holds the
+*denotation* of a CBOR head — pure expression functions only, so
+everything unfolds at proof time:
+
+- `Head_AI (Data, P)`, `Head_MT (Data, P)` — bit-level views of the
+  head byte;
+- `Head_Size (AI)`, `Head_Bytes_Available (Data, P)` — head extent;
+- `Head_Value (Data, P)` — the big-endian argument (twin of the
+  decoder's `Read_Arg`);
+- `Arg_Shortest (AI, Val)` — RFC 8949 §4.2.1 shortest-form (twin of
+  the decoder's `Is_Shortest`);
+- `Well_Formed_Head (Data, P)` — the exact input class on which the
+  decoder is proved to succeed.
+
+Both sides are then specified against the model, and the lemmas
+compose **by contract only** — no unfolding of either body at the
+lemma site:
+
+- **Encoders** publish `Well_Formed_Head (Result, 1)`,
+  `Head_MT (Result, 1) = <their MT>` and
+  `Head_Value (Result, 1) = <their argument>` (plus `Head_AI` /
+  payload-byte facts for simple values and floats).
+- **Decoder** (`Decode`/`Decode_At`) publishes both directions:
+  - *completeness* — `(if Well_Formed_Head (Data, P) then
+    Result.Status = OK)`;
+  - *soundness* — a `Decode_Post_OK` ghost predicate: for definite
+    heads (`Head_AI /= 31`) the item's Kind is `Head_MT` and its
+    value field equals `Head_Value`, per major type (plus the
+    pre-existing bounds facts `Decode_All` consumes).
+
+### The five tricks that made it prove
+
+1. **Twin expression functions.** `Read_Arg`/`Head_Value` and
+   `Is_Shortest`/`Arg_Shortest` are byte-for-byte twins; the runtime
+   ones were (re)written as expression functions so both unfold and
+   the bridge asserts (`Head_Value (Data,P) = Read_Arg (Data,P,AI)`,
+   placed once, right after the `Has_Head` gate) discharge by
+   congruence. Same for the encoder's `Make_Head`.
+
+2. **Bridge asserts before the case, not in each arm.** Four asserts
+   (`Head_AI = AI`, `Head_MT = MT`, `Head_Bytes_Available`,
+   `Head_Value = Read_Arg`) after the truncation gate give every
+   decoder arm the model view of its local variables.
+
+3. **Completeness ladders on the string-truncation branches.** The
+   only two genuinely hard error paths (byte/text string payload
+   truncation) needed a 4-step assert ladder ending in
+   `not Well_Formed_Head`. Everything else contradicted WF directly.
+
+4. **Stay in one integer domain.** The WF payload clause originally
+   compared in `UInt64` (`UInt64 (Data'Last - Item_End) >= Head_Value`)
+   and was unprovable at any level — a bitvector/integer bridge. The
+   fix: compare in `Storage_Offset` (`... >= SE_Offset (Head_Value)`,
+   guarded by the preceding `Head_Value <= SE_Offset'Last` conjunct).
+   Same lesson as gnatprove's modular-vs-signed folklore: pick the
+   domain of the *body's* comparison.
+
+5. **Quantified bridges for byte-content lemmas.** The float lemmas'
+   per-index asserts (`Decoded (6) = B6` …) were flaky at level 2:
+   the prover had to chain Get_String's quantified post with the
+   encoder's quantified post per index. Two quantified asserts
+   (`Encoded (1+I) = Raw (I)` and `Decoded (I) = Encoded (1+I)`)
+   made all eight indices instantiate reliably. `Get_String` also
+   needed a content post (`Result (I) = Data (Ref.First + I - 1)`)
+   and matching loop invariant — it previously published length only.
+
+### One real bug the prover caught
+
+`Bytes'First + I - 1` in the float-encoder posts associates as
+`(Bytes'First + I) - 1`, which can overflow `Storage_Offset` because
+those encoders bound only `Bytes'Length`, not `Bytes'First`.
+Re-parenthesising to `Bytes'First + (I - 1)` closed the last three
+VCs. Rule of thumb: in contracts over caller-supplied arrays, write
+index arithmetic so every intermediate stays inside the array.
+
+### Cost
+
+Contract-only at the API (no runtime behaviour change; ghost code
+compiles away without assertions). VC count grew 724 → 1082; full
+library proves in ~6 minutes on this machine, and the per-unit CI
+gate (encoding + decoding at level 2 / timeout 30) stays green.

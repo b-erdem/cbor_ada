@@ -15,12 +15,16 @@
 --    - Indefinite-length maps must have even item count at break
 --    - Maximum nesting depth enforced (configurable, default 16)
 
+with CBOR.Model;
+
 package CBOR.Decoding is
 
    pragma SPARK_Mode;
 
    use type CBOR.SE_Offset;
    use type CBOR.UInt64;
+   use type CBOR.Byte;
+   use type Interfaces.Unsigned_8;
 
    Max_Data_Length : constant CBOR.SE_Offset :=
      CBOR.SE_Offset'Last / 2;
@@ -55,18 +59,69 @@ package CBOR.Decoding is
      with Ghost,
           Pre => Data'First >= 0 and then Data'Last <= Max_Data_Length;
 
-   --  Big-endian value of the unsigned-integer argument whose head
-   --  byte is at position P.  Ghost twin of Read_Arg's MT-0 path,
-   --  used only in contracts.  Mirrors Read_Arg byte-for-byte so the
-   --  unsigned-arm soundness conjunct discharges by unfolding.
-   function Head_UInt
+   --  Everything Decode/Decode_At guarantee about a successful result
+   --  for the item whose head is at P, phrased against the shared
+   --  denotation in CBOR.Model:
+   --    - bounds facts consumed by Decode_All (unchanged), and
+   --    - soundness: for definite-form heads (AI /= 31) the decoded
+   --      item is exactly the head's denotation, per major type.
+   function Decode_Post_OK
      (Data : CBOR.Byte_Array;
-      P    : CBOR.SE_Offset)
-      return CBOR.UInt64
+      P    : CBOR.SE_Offset;
+      R    : Decode_Result)
+      return Boolean
+   is
+     (P in Data'Range
+      and then R.Item.Head_Start = P
+      and then R.Item.Item_End in Data'Range
+      and then R.Item.Item_End >= R.Item.Head_Start
+      and then R.Next >= Data'First
+      and then R.Next <= Data'Last + 1
+      and then Valid_Item_Refs (Data, R.Item)
+      and then
+        (if CBOR.Model.Head_AI (Data, P) /= 31 then
+            R.Item.Kind = CBOR.Model.Head_MT (Data, P)
+            and then CBOR.Model.Head_Bytes_Available (Data, P)
+            and then
+              (case R.Item.Kind is
+                  when MT_Unsigned_Integer =>
+                     R.Item.UInt_Value
+                       = CBOR.Model.Head_Value (Data, P),
+                  when MT_Negative_Integer =>
+                     R.Item.NInt_Arg
+                       = CBOR.Model.Head_Value (Data, P),
+                  when MT_Array =>
+                     R.Item.Arr_Count
+                       = CBOR.Model.Head_Value (Data, P),
+                  when MT_Map =>
+                     R.Item.Map_Count
+                       = CBOR.Model.Head_Value (Data, P),
+                  when MT_Tag =>
+                     R.Item.Tag_Number
+                       = CBOR.Model.Head_Value (Data, P),
+                  when MT_Byte_String | MT_Text_String =>
+                     True,
+                  when MT_Simple_Value =>
+                     (if CBOR.Model.Head_AI (Data, P) <= 23 then
+                         R.Item.SV_Value
+                           = CBOR.Model.Head_AI (Data, P)
+                         and then R.Item.Float_Ref = CBOR.Null_Ref
+                      elsif CBOR.Model.Head_AI (Data, P) = 24 then
+                         R.Item.SV_Value
+                           = Interfaces.Unsigned_8 (Data (P + 1))
+                      else
+                         R.Item.SV_Value
+                           = CBOR.Model.Head_AI (Data, P)
+                         and then R.Item.Float_Ref.First = P + 1
+                         and then R.Item.Float_Ref.Length
+                           = (case CBOR.Model.Head_AI (Data, P) is
+                                 when 25     => 2,
+                                 when 26     => 4,
+                                 when 27     => 8,
+                                 when others => 0)))))
      with Ghost,
           Pre => Data'First >= 0
-                 and then Data'Last <= Max_Data_Length
-                 and then P in Data'Range;
+                 and then Data'Last <= Max_Data_Length;
 
    --  Decode a single CBOR data item header starting at Data'First.
    --  For containers (arrays, maps, tags, indefinite-length strings),
@@ -83,26 +138,12 @@ package CBOR.Decoding is
       return Decode_Result
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length,
-          Post => (if Decode'Result.Status = OK then
-                      Decode'Result.Item.Head_Start
-                        in Data'Range
-                      and then Decode'Result.Item.Item_End
-                        in Data'Range
-                      and then Decode'Result.Next
-                        >= Data'First
-                      and then Decode'Result.Next
-                        <= Data'Last + 1
-                      and then Decode'Result.Item.Item_End
-                        >= Decode'Result.Item.Head_Start
-                      and then Valid_Item_Refs
-                                 (Data, Decode'Result.Item)
-                      and then
-                        (if Decode'Result.Item.Kind
-                               = MT_Unsigned_Integer
-                         then Decode'Result.Item.UInt_Value
-                                = Head_UInt
-                                    (Data,
-                                     Decode'Result.Item.Head_Start)));
+          Post => (if CBOR.Model.Well_Formed_Head (Data, Data'First)
+                   then Decode'Result.Status = OK)
+                  and then
+                  (if Decode'Result.Status = OK then
+                      Decode_Post_OK
+                        (Data, Data'First, Decode'Result));
 
    --  Decode a single CBOR data item header starting at Pos.
    --  Same semantics as Decode (Data) — header only, no child
@@ -114,26 +155,11 @@ package CBOR.Decoding is
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length
                  and then Pos in Data'Range,
-          Post => (if Decode'Result.Status = OK then
-                      Decode'Result.Item.Head_Start
-                        in Data'Range
-                      and then Decode'Result.Item.Item_End
-                        in Data'Range
-                      and then Decode'Result.Next
-                        >= Data'First
-                      and then Decode'Result.Next
-                        <= Data'Last + 1
-                      and then Decode'Result.Item.Item_End
-                        >= Decode'Result.Item.Head_Start
-                      and then Valid_Item_Refs
-                                 (Data, Decode'Result.Item)
-                      and then
-                        (if Decode'Result.Item.Kind
-                               = MT_Unsigned_Integer
-                         then Decode'Result.Item.UInt_Value
-                                = Head_UInt
-                                    (Data,
-                                     Decode'Result.Item.Head_Start)));
+          Post => (if CBOR.Model.Well_Formed_Head (Data, Pos)
+                   then Decode'Result.Status = OK)
+                  and then
+                  (if Decode'Result.Status = OK then
+                      Decode_Post_OK (Data, Pos, Decode'Result));
 
    --  Return the head size in bytes for a given additional info.
    function Head_Size
@@ -150,7 +176,11 @@ package CBOR.Decoding is
       with Pre => Valid_String_Ref (Data, Ref),
            Post => Get_String'Result'First = 1
                    and then Get_String'Result'Length = Ref.Length
-                   and then Get_String'Result'Last = Ref.Length;
+                   and then Get_String'Result'Last = Ref.Length
+                   and then
+                     (for all I in 1 .. Ref.Length =>
+                        Get_String'Result (I)
+                          = Data (Ref.First + I - 1));
 
    --  Decode a complete CBOR data item tree with nested items.
    --  Uses an iterative stack (max depth = Max_Depth, capped at

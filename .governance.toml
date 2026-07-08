@@ -5,9 +5,4 @@ profile = "proved-protocol"
 published = true
 gpr     = "cbor_ada.gpr"
 claimed_proof_level = 2
-claimed_vcs = 711
-
-[[exceptions]]
-principle = "P1"
-reason    = "711 of 774 VCs proved at gnatprove --level=2 (z3+cvc5). The remaining 63 are the cbor-properties encode/decode round-trip lemmas (Lemma_Round_Trip_*). Progress 2026-06-20: (1) the original blocker — decoder precondition Data'First >= 0 unprovable for the encoder's Storage_Array result — was fixed by publishing 'Result'First = 1 in the encoder postconditions (83 -> 63 unproved); (2) a spike landed the SOUNDNESS half of the round-trip — a guarded `if Kind = MT_Unsigned_Integer then UInt_Value = Head_UInt(Data, Head_Start)` conjunct on Decode/Decode_At with a ghost Head_UInt twin (proven, 0 decoder regression, added 50 proved VCs). Remaining: COMPLETENESS for all 9 header lemmas is blocked on ONE shared step — Encode_Head must publish its output bytes (it currently exposes only 'Length/'First), so the decoder cannot be shown to reach its OK return on encoder output. Full method + verified diff in cbor_ada/PROOF_NOTES.md. NOT a solver-availability issue."
-expires   = "2026-12-31"
+claimed_vcs = 1082

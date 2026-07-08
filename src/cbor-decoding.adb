@@ -32,26 +32,25 @@ package body CBOR.Decoding is
    Max_SE_Length : constant UInt64 :=
      UInt64 (CBOR.SE_Offset'Last);
 
+   --  Expression function so it unfolds at proof time; must stay the
+   --  exact runtime twin of the ghost CBOR.Model.Arg_Shortest.
    function Is_Shortest
      (AI  : Unsigned_8;
       Val : UInt64)
       return Boolean
    is
-   begin
-      if AI <= 23 then
-         return Val <= 23;
+     (if AI <= 23 then
+         Val <= 23
       elsif AI = 24 then
-         return Val >= 24 and then Val <= 255;
+         Val >= 24 and then Val <= 255
       elsif AI = 25 then
-         return Val >= 256 and then Val <= 65535;
+         Val >= 256 and then Val <= 65535
       elsif AI = 26 then
-         return Val >= 65536 and then Val <= 16#FFFF_FFFF#;
+         Val >= 65536 and then Val <= 16#FFFF_FFFF#
       elsif AI = 27 then
-         return Val >= 16#1_0000_0000#;
+         Val >= 16#1_0000_0000#
       else
-         return True;
-      end if;
-   end Is_Shortest;
+         True);
 
    function Has_Head
      (Data : CBOR.Byte_Array;
@@ -123,50 +122,6 @@ package body CBOR.Decoding is
                               when others =>
                                  True);
 
-   function Head_UInt
-     (Data : CBOR.Byte_Array;
-      P    : CBOR.SE_Offset)
-      return UInt64
-   is
-     (if (Unsigned_8 (Data (P)) and 16#1F#) <= 23 then
-         UInt64 (Unsigned_8 (Data (P)) and 16#1F#)
-      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 24
-            and then P <= Data'Last - 1
-      then
-         UInt64 (Unsigned_8 (Data (P + 1)))
-      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 25
-            and then P <= Data'Last - 2
-      then
-         UInt64 (Unsigned_8 (Data (P + 1))) * 256
-            + UInt64 (Unsigned_8 (Data (P + 2)))
-      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 26
-            and then P <= Data'Last - 4
-      then
-         UInt64 (Unsigned_8 (Data (P + 1))) * 16#100_0000#
-            + UInt64 (Unsigned_8 (Data (P + 2))) * 16#10000#
-            + UInt64 (Unsigned_8 (Data (P + 3))) * 16#100#
-            + UInt64 (Unsigned_8 (Data (P + 4)))
-      elsif (Unsigned_8 (Data (P)) and 16#1F#) = 27
-            and then P <= Data'Last - 8
-      then
-         UInt64 (Unsigned_8 (Data (P + 1)))
-              * 16#100_0000_0000_0000#
-            + UInt64 (Unsigned_8 (Data (P + 2)))
-                * 16#100_0000_0000_00#
-            + UInt64 (Unsigned_8 (Data (P + 3)))
-                * 16#100_0000_0000#
-            + UInt64 (Unsigned_8 (Data (P + 4)))
-                * 16#100_0000_00#
-            + UInt64 (Unsigned_8 (Data (P + 5)))
-                * 16#100_0000#
-            + UInt64 (Unsigned_8 (Data (P + 6)))
-                * 16#10000#
-            + UInt64 (Unsigned_8 (Data (P + 7)))
-                * 16#100#
-            + UInt64 (Unsigned_8 (Data (P + 8)))
-      else
-         0);
-
    --  Internal decode starting at position P.
    function Decode_At
      (Data : CBOR.Byte_Array;
@@ -175,26 +130,11 @@ package body CBOR.Decoding is
      with Pre => Data'First >= 0
                  and then Data'Last <= Max_Data_Length
                  and then P in Data'Range,
-          Post => (if Decode_At'Result.Status = OK then
-                      Decode_At'Result.Item.Head_Start
-                        in Data'Range
-                      and then Decode_At'Result.Item.Item_End
-                        in Data'Range
-                      and then Decode_At'Result.Next
-                        >= Data'First
-                      and then Decode_At'Result.Next
-                        <= Data'Last + 1
-                      and then Decode_At'Result.Item.Item_End
-                        >= Decode_At'Result.Item.Head_Start
-                      and then Valid_Item_Refs
-                                 (Data, Decode_At'Result.Item)
-                      and then
-                        (if Decode_At'Result.Item.Kind
-                               = MT_Unsigned_Integer
-                         then Decode_At'Result.Item.UInt_Value
-                                = Head_UInt
-                                    (Data,
-                                     Decode_At'Result.Item.Head_Start)))
+          Post => (if CBOR.Model.Well_Formed_Head (Data, P)
+                   then Decode_At'Result.Status = OK)
+                  and then
+                  (if Decode_At'Result.Status = OK then
+                      Decode_Post_OK (Data, P, Decode_At'Result))
    is
    begin
       declare
@@ -204,6 +144,8 @@ package body CBOR.Decoding is
          AI : constant Unsigned_8 := B and 16#1F#;
       begin
          if AI in 28 .. 30 then
+            pragma Assert
+              (not CBOR.Model.Well_Formed_Head (Data, P));
             return (Status => Err_Not_Well_Formed,
                     Item    => <>,
                     Next    => P);
@@ -214,6 +156,8 @@ package body CBOR.Decoding is
                when CBOR.MT_Unsigned_Integer |
                     CBOR.MT_Negative_Integer |
                     CBOR.MT_Tag =>
+                  pragma Assert
+                    (not CBOR.Model.Well_Formed_Head (Data, P));
                   return (Status => Err_Not_Well_Formed,
                           Item    => <>,
                           Next    => P);
@@ -246,6 +190,8 @@ package body CBOR.Decoding is
                                       TS_Ref     => CBOR.Null_Ref),
                           Next    => P + 1);
              when CBOR.MT_Simple_Value =>
+                  pragma Assert
+                    (not CBOR.Model.Well_Formed_Head (Data, P));
                   return (Status => Err_Not_Well_Formed,
                           Item    => <>,
                           Next    => P);
@@ -253,10 +199,23 @@ package body CBOR.Decoding is
           end if;
 
          if not Has_Head (Data, P, AI) then
+            pragma Assert
+              (not CBOR.Model.Head_Bytes_Available (Data, P));
+            pragma Assert
+              (not CBOR.Model.Well_Formed_Head (Data, P));
             return (Status => Err_Truncated,
                     Item    => <>,
                     Next    => P);
          end if;
+
+         --  Bridge the body's local view (B, MT, AI, Read_Arg) to the
+         --  ghost denotation the contract is phrased against.  Every
+         --  arm below inherits these equalities.
+         pragma Assert (CBOR.Model.Head_AI (Data, P) = AI);
+         pragma Assert (CBOR.Model.Head_MT (Data, P) = MT);
+         pragma Assert (CBOR.Model.Head_Bytes_Available (Data, P));
+         pragma Assert
+           (CBOR.Model.Head_Value (Data, P) = Read_Arg (Data, P, AI));
 
           declare
               Item_End : constant CBOR.SE_Offset :=
@@ -276,12 +235,12 @@ package body CBOR.Decoding is
                        Read_Arg (Data, P, AI);
                   begin
                      if not Is_Shortest (AI, Val) then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
                      end if;
-                     pragma Assert
-                       (Head_UInt (Data, P) = Read_Arg (Data, P, AI));
                      return (Status => OK,
                              Item   => (Kind       =>
                                           CBOR.MT_Unsigned_Integer,
@@ -297,6 +256,8 @@ package body CBOR.Decoding is
                        Read_Arg (Data, P, AI);
                   begin
                      if not Is_Shortest (AI, Val) then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
@@ -316,11 +277,15 @@ package body CBOR.Decoding is
                        Read_Arg (Data, P, AI);
                   begin
                      if Len > Max_SE_Length then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
                      end if;
                      if not Is_Shortest (AI, Len) then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
@@ -333,6 +298,21 @@ package body CBOR.Decoding is
                           and then (Item_End >= Data'Last
                                     or else Data'Last - Item_End < SLen)
                         then
+                           --  Completeness ladder: a well-formed head
+                           --  guarantees the payload fits, so this
+                           --  truncation branch contradicts WF.
+                           pragma Assert
+                             (Item_End
+                              = P + CBOR.Model.Head_Size
+                                      (CBOR.Model.Head_AI (Data, P))
+                                  - 1);
+                           pragma Assert
+                             (SLen
+                              = CBOR.SE_Offset
+                                  (CBOR.Model.Head_Value (Data, P)));
+                           pragma Assert (Data'Last - Item_End < SLen);
+                           pragma Assert
+                             (not CBOR.Model.Well_Formed_Head (Data, P));
                            return (Status => Err_Truncated,
                                    Item    => <>,
                                    Next    => P);
@@ -364,11 +344,15 @@ package body CBOR.Decoding is
                         Read_Arg (Data, P, AI);
                    begin
                       if Len > Max_SE_Length then
+                         pragma Assert
+                           (not CBOR.Model.Well_Formed_Head (Data, P));
                          return (Status => Err_Not_Well_Formed,
                                  Item    => <>,
                                  Next    => P);
                       end if;
                       if not Is_Shortest (AI, Len) then
+                         pragma Assert
+                           (not CBOR.Model.Well_Formed_Head (Data, P));
                          return (Status => Err_Not_Well_Formed,
                                  Item    => <>,
                                  Next    => P);
@@ -381,6 +365,21 @@ package body CBOR.Decoding is
                           and then (Item_End >= Data'Last
                                     or else Data'Last - Item_End < SLen)
                         then
+                           --  Completeness ladder: a well-formed head
+                           --  guarantees the payload fits, so this
+                           --  truncation branch contradicts WF.
+                           pragma Assert
+                             (Item_End
+                              = P + CBOR.Model.Head_Size
+                                      (CBOR.Model.Head_AI (Data, P))
+                                  - 1);
+                           pragma Assert
+                             (SLen
+                              = CBOR.SE_Offset
+                                  (CBOR.Model.Head_Value (Data, P)));
+                           pragma Assert (Data'Last - Item_End < SLen);
+                           pragma Assert
+                             (not CBOR.Model.Well_Formed_Head (Data, P));
                            return (Status => Err_Truncated,
                                    Item    => <>,
                                    Next    => P);
@@ -412,6 +411,8 @@ package body CBOR.Decoding is
                        Read_Arg (Data, P, AI);
                   begin
                      if not Is_Shortest (AI, Val) then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
@@ -430,6 +431,8 @@ package body CBOR.Decoding is
                        Read_Arg (Data, P, AI);
                   begin
                      if not Is_Shortest (AI, Val) then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
@@ -448,6 +451,8 @@ package body CBOR.Decoding is
                        Read_Arg (Data, P, AI);
                   begin
                      if not Is_Shortest (AI, Val) then
+                        pragma Assert
+                          (not CBOR.Model.Well_Formed_Head (Data, P));
                         return (Status => Err_Not_Well_Formed,
                                 Item    => <>,
                                 Next    => P);
@@ -551,6 +556,9 @@ package body CBOR.Decoding is
       for I in 1 .. Ref.Length loop
          pragma Loop_Invariant (I >= 1);
          pragma Loop_Invariant (I <= Ref.Length);
+         pragma Loop_Invariant
+           (for all J in 1 .. I - 1 =>
+              Result (J) = Data (Ref.First + J - 1));
          Result (I) := Data (Ref.First + SE_Offset (I) - 1);
       end loop;
       return Result;

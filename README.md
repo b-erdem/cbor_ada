@@ -6,7 +6,7 @@ The encoder and decoder are **100% SPARK-proved** at Level 2 — mathematically 
 
 ## Key properties
 
-- **Formally verified core** — 517 proof obligations on the encoder + decoder, 0 unproved (CVC5/Z3). Optional round-trip lemmas in `CBOR.Properties` are aspirational and not yet fully discharged; see [SPARK proof status](#spark-proof-status).
+- **Formally verified, including round-trip** — 1082 proof obligations across encoder, decoder, and the `CBOR.Properties` lemmas, 0 unproved (CVC5/Z3). `Decode (Encode (x)) = x` is machine-proved for every major type; see [SPARK proof status](#spark-proof-status).
 - **RFC 8949 compliant** — full well-formedness validation with shortest-form checking
 - **No heap allocation** — stack-only, suitable for embedded and safety-critical systems
 - **Stateless** — `pragma Pure`, no global state, no side effects
@@ -150,16 +150,17 @@ The decoder enforces all RFC 8949 well-formedness requirements:
 
 ## SPARK proof status
 
-The runtime-critical surface — `CBOR.Encoding` and `CBOR.Decoding` — is fully proved at Level 2:
+The entire library — `CBOR.Encoding`, `CBOR.Decoding`, and the
+`CBOR.Properties` round-trip lemmas — is fully proved at Level 2:
 
 ```
-SPARK Analysis results   Total   Flow   Provers   Unproved
-Total                      517     47       470          .
+SPARK Analysis results   Total   Flow   Provers   Justified   Unproved
+Total                     1082     57      1025           .          .
 ```
 
-All 517 checks on the encoder + decoder are proved. No `pragma Assume` or `Justified` annotations — every obligation is machine-verified.
+No `pragma Assume` or `Justified` annotations — every obligation is machine-verified (z3 + cvc5, level 2, 30 s timeout). Committed evidence lives in `proof/`.
 
-`CBOR.Properties` is a separate package of round-trip lemmas (`Lemma_Round_Trip_Unsigned`, `_Negative`, `_Bool`, `_Float_*`, etc.) that aim to prove the algebraic property `Decode (Encode (x)) = x` for each major type. These lemmas are **not on the runtime path** — they exist purely as proof artefacts — and they are still **work-in-progress**: at the time of writing, 90 of their 198 obligations are unproved at Level 2 / 120 s. Consumers who only call the encoder/decoder are unaffected; consumers who want to compose CBOR.Properties into larger proofs should expect to need their own assumes or higher prover budgets until the lemmas are closed.
+`CBOR.Properties` proves the algebraic property `Decode (Encode (x)) = x` for every major type (integers, tags, array/map headers, simple values, booleans, null/undefined, and half/single/double float payload pass-through). The lemmas compose purely by contract: encoders publish a well-formed-head denotation of their output (`CBOR.Model`), and the decoder's postcondition guarantees both *completeness* (well-formed input decodes OK) and *soundness* (the decoded item equals the head's denotation). These lemmas are **not on the runtime path** — they are ghost code and compile away.
 
 ### Running proofs locally
 
@@ -167,8 +168,8 @@ All 517 checks on the encoder + decoder are proved. No `pragma Assume` or `Justi
 # Prove core packages (~30 seconds)
 scripts/prove
 
-# Prove everything including the in-progress round-trip lemmas (slow)
-scripts/prove 2 120 all
+# Prove everything including the round-trip lemmas
+scripts/prove 2 30 all
 ```
 
 ## Encoder API reference

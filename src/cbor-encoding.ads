@@ -6,6 +6,7 @@
 --  The entire package is proved at SPARK Level 2 (no runtime errors).
 
 with Interfaces;
+with CBOR.Model;
 
 package CBOR.Encoding is
 
@@ -14,6 +15,7 @@ package CBOR.Encoding is
    use type CBOR.SE_Offset;
    use type CBOR.UInt64;
    use type Interfaces.Unsigned_8;
+   use type CBOR.Byte;
 
    --  Maximum input length to prevent overflow in result array sizing.
    Max_Data_Length : constant :=
@@ -27,7 +29,14 @@ package CBOR.Encoding is
      (Value : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Unsigned'Result'Length in 1 .. 9
-                  and then Encode_Unsigned'Result'First = 1;
+                  and then Encode_Unsigned'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Unsigned'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Unsigned'Result, 1)
+                             = CBOR.MT_Unsigned_Integer
+                  and then CBOR.Model.Head_Value
+                             (Encode_Unsigned'Result, 1) = Value;
 
    --  Encode negative integer -1 - Arg (major type 1).
    --  @satisfies REQ-CBOR-002
@@ -36,7 +45,14 @@ package CBOR.Encoding is
      (Arg : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Negative'Result'Length in 1 .. 9
-                  and then Encode_Negative'Result'First = 1;
+                  and then Encode_Negative'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Negative'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Negative'Result, 1)
+                             = CBOR.MT_Negative_Integer
+                  and then CBOR.Model.Head_Value
+                             (Encode_Negative'Result, 1) = Arg;
 
    --  Encode a signed integer using the appropriate CBOR major type.
    --  Non-negative values use major type 0 (unsigned).
@@ -83,7 +99,13 @@ package CBOR.Encoding is
      (Count : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Array'Result'Length in 1 .. 9
-                  and then Encode_Array'Result'First = 1;
+                  and then Encode_Array'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Array'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Array'Result, 1) = CBOR.MT_Array
+                  and then CBOR.Model.Head_Value
+                             (Encode_Array'Result, 1) = Count;
 
    --  Encode definite-length map header (major type 5).
    --  @satisfies REQ-CBOR-007
@@ -91,7 +113,13 @@ package CBOR.Encoding is
      (Count : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Map'Result'Length in 1 .. 9
-                  and then Encode_Map'Result'First = 1;
+                  and then Encode_Map'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Map'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Map'Result, 1) = CBOR.MT_Map
+                  and then CBOR.Model.Head_Value
+                             (Encode_Map'Result, 1) = Count;
 
    --  Encode tag number (major type 6).
    --  @satisfies REQ-CBOR-008
@@ -99,7 +127,13 @@ package CBOR.Encoding is
      (Tag_Number : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Tag'Result'Length in 1 .. 9
-                  and then Encode_Tag'Result'First = 1;
+                  and then Encode_Tag'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Tag'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Tag'Result, 1) = CBOR.MT_Tag
+                  and then CBOR.Model.Head_Value
+                             (Encode_Tag'Result, 1) = Tag_Number;
 
    --  Encode simple value (major type 7, one or two bytes).
    --  Values 24-31 are reserved per RFC 8949 and rejected.
@@ -109,26 +143,62 @@ package CBOR.Encoding is
       return CBOR.Byte_Array
      with Pre => Value <= 23 or else Value >= 32,
           Post => Encode_Simple'Result'Length in 1 .. 2
-                  and then Encode_Simple'Result'First = 1;
+                  and then Encode_Simple'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Simple'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Simple'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then
+                    (if Value <= 23 then
+                        CBOR.Model.Head_AI
+                          (Encode_Simple'Result, 1) = Value
+                     else
+                        CBOR.Model.Head_AI
+                          (Encode_Simple'Result, 1) = 24
+                        and then Interfaces.Unsigned_8
+                                   (Encode_Simple'Result (2)) = Value);
 
    --  Encode boolean (simple values 20/21).
    function Encode_Bool
      (Value : Boolean)
       return CBOR.Byte_Array
      with Post => Encode_Bool'Result'Length = 1
-                  and then Encode_Bool'Result'First = 1;
+                  and then Encode_Bool'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Bool'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Bool'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then CBOR.Model.Head_AI (Encode_Bool'Result, 1)
+                             = (if Value then CBOR.Simple_True
+                                else CBOR.Simple_False);
 
    --  Encode null (simple value 22).
    function Encode_Null
       return CBOR.Byte_Array
      with Post => Encode_Null'Result'Length = 1
-                  and then Encode_Null'Result'First = 1;
+                  and then Encode_Null'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Null'Result, 1)
+                  and then CBOR.Model.Head_MT (Encode_Null'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then CBOR.Model.Head_AI (Encode_Null'Result, 1)
+                             = CBOR.Simple_Null;
 
    --  Encode undefined (simple value 23).
    function Encode_Undefined
       return CBOR.Byte_Array
      with Post => Encode_Undefined'Result'Length = 1
-                  and then Encode_Undefined'Result'First = 1;
+                  and then Encode_Undefined'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Undefined'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Undefined'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then CBOR.Model.Head_AI
+                             (Encode_Undefined'Result, 1)
+                             = CBOR.Simple_Undef;
 
    --  Encode half-precision float (AI=25, raw 2 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
@@ -137,7 +207,18 @@ package CBOR.Encoding is
       return CBOR.Byte_Array
      with Pre  => Bytes'Length = 2,
           Post => Encode_Float_Half'Result'Length = 3
-                  and then Encode_Float_Half'Result'First = 1;
+                  and then Encode_Float_Half'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Float_Half'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Float_Half'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then CBOR.Model.Head_AI
+                             (Encode_Float_Half'Result, 1) = 25
+                  and then
+                    (for all I in CBOR.SE_Offset range 1 .. 2 =>
+                       Encode_Float_Half'Result (1 + I)
+                         = Bytes (Bytes'First + (I - 1)));
 
    --  Encode single-precision float (AI=26, raw 4 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
@@ -146,7 +227,18 @@ package CBOR.Encoding is
       return CBOR.Byte_Array
      with Pre  => Bytes'Length = 4,
           Post => Encode_Float_Single'Result'Length = 5
-                  and then Encode_Float_Single'Result'First = 1;
+                  and then Encode_Float_Single'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Float_Single'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Float_Single'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then CBOR.Model.Head_AI
+                             (Encode_Float_Single'Result, 1) = 26
+                  and then
+                    (for all I in CBOR.SE_Offset range 1 .. 4 =>
+                       Encode_Float_Single'Result (1 + I)
+                         = Bytes (Bytes'First + (I - 1)));
 
    --  Encode double-precision float (AI=27, raw 8 big-endian bytes).
    --  Bytes must be in network byte order (big-endian).
@@ -155,7 +247,18 @@ package CBOR.Encoding is
       return CBOR.Byte_Array
      with Pre  => Bytes'Length = 8,
           Post => Encode_Float_Double'Result'Length = 9
-                  and then Encode_Float_Double'Result'First = 1;
+                  and then Encode_Float_Double'Result'First = 1
+                  and then CBOR.Model.Well_Formed_Head
+                             (Encode_Float_Double'Result, 1)
+                  and then CBOR.Model.Head_MT
+                             (Encode_Float_Double'Result, 1)
+                             = CBOR.MT_Simple_Value
+                  and then CBOR.Model.Head_AI
+                             (Encode_Float_Double'Result, 1) = 27
+                  and then
+                    (for all I in CBOR.SE_Offset range 1 .. 8 =>
+                       Encode_Float_Double'Result (1 + I)
+                         = Bytes (Bytes'First + (I - 1)));
 
    --  Encode break stop code (0xFF).
    function Encode_Break
@@ -199,6 +302,17 @@ private
       Val : CBOR.UInt64)
       return CBOR.Byte_Array
      with Post => Encode_Head'Result'Length = Head_Length (Val)
-                  and then Encode_Head'Result'First = 1;
+                  and then Encode_Head'Result'First = 1
+                  and then CBOR.Model.Head_MT (Encode_Head'Result, 1)
+                             = MT
+                  and then CBOR.Model.Head_AI (Encode_Head'Result, 1)
+                             <= 27
+                  and then CBOR.Model.Head_Bytes_Available
+                             (Encode_Head'Result, 1)
+                  and then CBOR.Model.Arg_Shortest
+                             (CBOR.Model.Head_AI
+                                (Encode_Head'Result, 1), Val)
+                  and then CBOR.Model.Head_Value
+                             (Encode_Head'Result, 1) = Val;
 
 end CBOR.Encoding;

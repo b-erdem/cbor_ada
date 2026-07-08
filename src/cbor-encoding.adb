@@ -16,16 +16,15 @@ package body CBOR.Encoding is
    Max_Input : constant SSE.Storage_Offset :=
      SSE.Storage_Offset (Max_Data_Length);
 
+   --  Expression function so callers' postconditions can see the
+   --  head byte's bit layout at proof time.
    function Make_Head
       (MT  : CBOR.Major_Type;
        Val : U8)
        return SSE.Storage_Element
    is
-       MT_Bits : constant U8 :=
-         Shift_Left (CBOR.MT_To_U8 (MT), 5);
-   begin
-       return SSE.Storage_Element (MT_Bits or Val);
-   end Make_Head;
+     (SSE.Storage_Element
+        (Shift_Left (CBOR.MT_To_U8 (MT), 5) or Val));
 
    function To_SE (V : U8) return SSE.Storage_Element
    is (SSE.Storage_Element (V));
@@ -45,6 +44,10 @@ package body CBOR.Encoding is
          begin
             pragma Assert (R'Length = 1);
             pragma Assert (Head_Length (Val) = 1);
+            pragma Assert (CBOR.Model.Head_AI (R, 1) = U8 (Val));
+            pragma Assert (CBOR.Model.Head_MT (R, 1) = MT);
+            pragma Assert (CBOR.Model.Head_Bytes_Available (R, 1));
+            pragma Assert (CBOR.Model.Head_Value (R, 1) = Val);
             return R;
          end;
       elsif Val <= 255 then
@@ -55,6 +58,10 @@ package body CBOR.Encoding is
          begin
             pragma Assert (R'Length = 2);
             pragma Assert (Head_Length (Val) = 2);
+            pragma Assert (CBOR.Model.Head_AI (R, 1) = 24);
+            pragma Assert (CBOR.Model.Head_MT (R, 1) = MT);
+            pragma Assert (CBOR.Model.Head_Bytes_Available (R, 1));
+            pragma Assert (CBOR.Model.Head_Value (R, 1) = Val);
             return R;
          end;
       elsif Val <= 65535 then
@@ -68,6 +75,13 @@ package body CBOR.Encoding is
          begin
             pragma Assert (R'Length = 3);
             pragma Assert (Head_Length (Val) = 3);
+            pragma Assert (CBOR.Model.Head_AI (R, 1) = 25);
+            pragma Assert (CBOR.Model.Head_MT (R, 1) = MT);
+            pragma Assert (CBOR.Model.Head_Bytes_Available (R, 1));
+            pragma Assert
+              (U8 (R (2)) = U8 (Shift_Right (V, 8))
+               and then U8 (R (3)) = U8 (V and 16#FF#));
+            pragma Assert (CBOR.Model.Head_Value (R, 1) = Val);
             return R;
          end;
       elsif Val <= 16#FFFF_FFFF# then
@@ -85,6 +99,16 @@ package body CBOR.Encoding is
          begin
             pragma Assert (R'Length = 5);
             pragma Assert (Head_Length (Val) = 5);
+            pragma Assert (CBOR.Model.Head_AI (R, 1) = 26);
+            pragma Assert (CBOR.Model.Head_MT (R, 1) = MT);
+            pragma Assert (CBOR.Model.Head_Bytes_Available (R, 1));
+            pragma Assert
+              (U64 (U8 (R (2))) * 16#100_0000#
+                 + U64 (U8 (R (3))) * 16#10000#
+                 + U64 (U8 (R (4))) * 16#100#
+                 + U64 (U8 (R (5)))
+               = U64 (V));
+            pragma Assert (CBOR.Model.Head_Value (R, 1) = Val);
             return R;
          end;
       else
@@ -109,6 +133,20 @@ package body CBOR.Encoding is
          begin
             pragma Assert (R'Length = 9);
             pragma Assert (Head_Length (Val) = 9);
+            pragma Assert (CBOR.Model.Head_AI (R, 1) = 27);
+            pragma Assert (CBOR.Model.Head_MT (R, 1) = MT);
+            pragma Assert (CBOR.Model.Head_Bytes_Available (R, 1));
+            pragma Assert
+              (U64 (U8 (R (2))) * 16#100_0000_0000_0000#
+                 + U64 (U8 (R (3))) * 16#100_0000_0000_00#
+                 + U64 (U8 (R (4))) * 16#100_0000_0000#
+                 + U64 (U8 (R (5))) * 16#100_0000_00#
+                 + U64 (U8 (R (6))) * 16#100_0000#
+                 + U64 (U8 (R (7))) * 16#10000#
+                 + U64 (U8 (R (8))) * 16#100#
+                 + U64 (U8 (R (9)))
+               = V);
+            pragma Assert (CBOR.Model.Head_Value (R, 1) = Val);
             return R;
          end;
       end if;
@@ -337,6 +375,10 @@ package body CBOR.Encoding is
         1 .. 4
       loop
          pragma Loop_Invariant (I <= 4);
+         pragma Loop_Invariant (R (1) = H (1));
+         pragma Loop_Invariant
+           (for all J in SSE.Storage_Offset range 1 .. I - 1 =>
+              R (1 + J) = Bytes (Bytes'First + J - 1));
          R (1 + I) := Bytes
            (Bytes'First + SSE.Storage_Offset (I - 1));
       end loop;
@@ -357,6 +399,10 @@ package body CBOR.Encoding is
         1 .. 8
       loop
          pragma Loop_Invariant (I <= 8);
+         pragma Loop_Invariant (R (1) = H (1));
+         pragma Loop_Invariant
+           (for all J in SSE.Storage_Offset range 1 .. I - 1 =>
+              R (1 + J) = Bytes (Bytes'First + J - 1));
          R (1 + I) := Bytes
            (Bytes'First + SSE.Storage_Offset (I - 1));
       end loop;

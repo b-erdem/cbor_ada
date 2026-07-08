@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-09
+
+### Added
+- **Encode/decode round-trip functional correctness, machine-proved.**
+  `Decode (Encode (x)) = x` is now a SPARK theorem for every major-type
+  head — unsigned/negative integers, tags, array and map headers, simple
+  values, booleans, null, undefined — plus byte-exact float payload
+  pass-through, via twelve `CBOR.Properties.Lemma_Round_Trip_*` ghost
+  lemmas. This is functional correctness beyond absence of run-time
+  errors.
+- New ghost package `CBOR.Model`: a shared denotation of a CBOR data-item
+  head that the encoder and decoder are both specified against, so the
+  round-trip lemmas discharge by contract composition.
+- Committed proof evidence under `proof/`.
+
+### Changed
+- Decoder (`Decode`/`Decode_At`) postconditions strengthened with a
+  completeness direction (well-formed input decodes successfully) and a
+  soundness direction (the decoded item equals the head's denotation).
+- Encoders publish `Well_Formed_Head` and the head value of their output.
+- `Get_String` publishes a byte-content postcondition.
+- Whole library now proves 1082/1082 VCs at level 2, 0 unproved,
+  0 pragma Assume (was 517 core VCs with the round-trip lemmas open).
+- Removed `gnatprove` from runtime dependencies (development-only prover).
+
 ## [0.2.0] - 2026-04-13
 
 **BREAKING**: Replace `Ada.Streams` with `System.Storage_Elements` for
@@ -93,6 +118,7 @@ Initial release.
   optional UTF-8 validation
 - No heap allocation, `pragma Pure`, zero dependencies
 
+[0.3.0]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.3.0
 [0.2.0]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.2.0
 [0.1.1]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.1.1
 [0.1.0]: https://github.com/b-erdem/cbor_ada/releases/tag/v0.1.0
