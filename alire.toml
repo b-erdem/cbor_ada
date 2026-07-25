@@ -3,7 +3,7 @@ description = "CBOR (RFC 8949) encoding/decoding library with SPARK formal verif
 version = "0.3.0"
 
 authors = ["Baris Erdem"]
-maintainers = ["Baris Erdem <baris@erdem.dev>"]
+maintainers = ["Baris Erdem <brserdem@proton.me>"]
 maintainers-logins = ["b-erdem"]
 licenses = "Apache-2.0"
 website = "https://github.com/b-erdem/cbor_ada"

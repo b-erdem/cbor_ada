@@ -216,4 +216,4 @@ scripts/prove 2 30 all
 
 Apache-2.0 — see [LICENSE](LICENSE).
 
-Certification artifacts, safety case documentation, and formal verification evidence packages available for safety-critical deployments — contact [baris@erdem.dev](mailto:baris@erdem.dev).
+Certification artifacts, safety case documentation, and formal verification evidence packages available for safety-critical deployments — contact [brserdem@proton.me](mailto:brserdem@proton.me).

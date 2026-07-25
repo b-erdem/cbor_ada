@@ -1,4 +1,4 @@
---  Copyright (C) 2025 Baris Erdem <baris@erdem.dev>
+--  Copyright (C) 2025 Baris Erdem <brserdem@proton.me>
 --  SPDX-License-Identifier: Apache-2.0
 
 --  SPARK-proved CBOR encoder (RFC 8949).
